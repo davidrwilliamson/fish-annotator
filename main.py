@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import cv2
-import re
-import os
+import re, os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
@@ -144,5 +143,9 @@ class PygView(object):
         self.image = im
 
 
-if __name__ == '__main__':
+def main():
     PygView().run()
+
+
+if __name__ == '__main__':
+    main()
