@@ -54,7 +54,6 @@ class MainWindow(QMainWindow):
         self.loop()
         self.iw.update_surface(self.surface)
 
-
     def loop(self):
         self.colour = (abs(self.colour[0] - 255), abs(self.colour[0] - 255), abs(self.colour[0] - 255))
         self.surface.fill(self.colour)

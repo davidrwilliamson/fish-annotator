@@ -17,6 +17,8 @@ class ImageSet:
     def __init__(self, folder):
         self.folder = folder
         self._im_files = []
+        self._bg_files = []
+        self._bm_files = []
         self._im_annotations = []
         self._current_file = 0
 
@@ -29,7 +31,7 @@ class ImageSet:
     #     return im_files
 
     def _list_image_files(self):
-        rois_filename = os.path.join(self.folder, 'RoIs')
+        rois_filename = os.path.join(self.folder, 'analysis/RoIs')
 
         if os.path.isfile(rois_filename):
             rois_file = open(rois_filename, 'rt')
@@ -46,6 +48,10 @@ class ImageSet:
                 im_files.append(fn)
 
         self._im_files = im_files
+        self._bg_files = ['{}analysis/backgrounds/{}'.format(self.folder, file) for file in
+                          os.listdir(os.path.join(self.folder, 'analysis/backgrounds/'))]
+        self._bm_files = ['{}analysis/binary_masks/{}'.format(self.folder, file) for file in
+                          os.listdir(os.path.join(self.folder, 'analysis/binary_masks/'))]
 
     def _list_annotations(self):
         self._im_annotations = np.empty(self.num_images, dtype=Annotation)
@@ -80,7 +86,7 @@ class ImageSet:
 
 class PygView(object):
 
-    def __init__(self, width=1080, height=720, fps=60):
+    def __init__(self, width=1224, height=425, fps=60):
         """Initialize pygame, window, background, font,...
         """
         pygame.init()
@@ -131,7 +137,14 @@ class PygView(object):
         self.screen.blit(surface, (self.width - fw - fh, self.height - 2 * fh))
 
     def load_image(self, filename):
-        im = np.load(filename)
+        im = np.load(filename).squeeze()
+        im_bg = np.load('{}.bg.npy'.format(filename)).squeeze()
+        im_bw = np.load('{}.mask.npy'.format(filename)).squeeze()
+        im = im - ((im_bg - 215)* (1 - im_bw))
+        # im = im + (215 * (1 - im_bw))
+        im[im < 0] = 0
+        im[im > 255] = 255
+        im = np.uint8(im)
         im = cv2.cvtColor(im, cv2.COLOR_BAYER_BG2RGB)
 
         im = pygame.surfarray.make_surface(np.uint8(im))
