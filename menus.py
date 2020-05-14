@@ -1,12 +1,12 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QAction, QFileDialog, QMenuBar
+from PyQt5.QtWidgets import QAction, QFileDialog, QMenuBar, QWidget
 from image_folder import ImageFolder
 
 
 class MainMenu(QMenuBar):
     sgnl_im_folder = pyqtSignal(ImageFolder)
 
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget) -> None:
         super(MainMenu, self).__init__(parent)
 
         self.image_folder = None
@@ -17,7 +17,7 @@ class MainMenu(QMenuBar):
 
         file_menu.addAction(action_open)
 
-    def call_open(self):
+    def call_open(self) -> None:
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.Directory)
         if dlg.exec_():

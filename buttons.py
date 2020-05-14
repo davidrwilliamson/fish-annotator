@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QCheckBox, QGridLayout, QLabel, QPushButton, QWidget
 class BottomButtons(QWidget):
     sgnl_change_frame = pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget = None) -> None:
         super(BottomButtons, self).__init__(parent)
         bb_layout = QGridLayout(self)
 
@@ -22,7 +22,7 @@ class BottomButtons(QWidget):
         btn_prev.clicked.connect(lambda: self.call_change(-1))
         btn_next.clicked.connect(lambda: self.call_change(1))
 
-    def call_change(self, direction):
+    def call_change(self, direction: int) -> None:
         self.sgnl_change_frame.emit(direction)
 
 
@@ -30,7 +30,7 @@ class RightButtons(QWidget):
     sgnl_change_im_layer = pyqtSignal(int)
     sgnl_toggle_rois = pyqtSignal(bool)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget = None) -> None:
         super(RightButtons, self).__init__(parent)
         rb_layout = QGridLayout(self)
 
@@ -71,14 +71,14 @@ class RightButtons(QWidget):
         rb_layout.addWidget(btn_fill, 2, 1)
         rb_layout.addWidget(btn_erase, 3, 1)
 
-    def call_btn(self, idx):
+    def call_btn(self, idx: int) -> None:
         self.sgnl_change_im_layer.emit(idx)
         self.uncheck_others(idx)
 
-    def call_rois(self, checked):
+    def call_rois(self, checked: bool) -> None:
         self.sgnl_toggle_rois.emit(checked)
 
-    def uncheck_others(self, btn):
+    def uncheck_others(self, btn: int):
         buttons = [self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub]
         for i in range(len(buttons)):
             if i != btn:
@@ -91,7 +91,7 @@ class BottomRightButtons(QWidget):
     sgnl_cb_bad_changed = pyqtSignal(int)
     sgnl_cb_interest_changed = pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget = None) -> None:
         super(BottomRightButtons, self).__init__(parent)
         brb_layout = QGridLayout(self)
 
@@ -104,8 +104,8 @@ class BottomRightButtons(QWidget):
         cb_bad.stateChanged.connect(self.call_cb_bad)
         cb_interest.stateChanged.connect(self.call_cb_interest)
 
-    def call_cb_bad(self, state):
+    def call_cb_bad(self, state: int) -> None:
         self.sgnl_cb_bad_changed.emit(state)
 
-    def call_cb_interest(self, state):
+    def call_cb_interest(self, state: int) -> None:
         self.sgnl_cb_interest_changed.emit(state)

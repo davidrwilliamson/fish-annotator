@@ -4,10 +4,11 @@ import re
 import qimage2ndarray as q2n
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
+from typing import TextIO
 
 
 class ImageFolder:
-    def __init__(self, folder):
+    def __init__(self, folder: str) -> None:
         self.folder = folder
 
         self._all_files = []
@@ -22,7 +23,7 @@ class ImageFolder:
         self._list_image_files()
         self._list_rois()
 
-    def _load_rois_file(self):
+    def _load_rois_file(self) -> TextIO:
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
 
         if os.path.isfile(rois_filename):
@@ -33,7 +34,7 @@ class ImageFolder:
 
         return rois_file
 
-    def _list_image_files(self):
+    def _list_image_files(self) -> None:
         rois_file = self._load_rois_file()
 
         self._all_files = [file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc']
@@ -50,7 +51,7 @@ class ImageFolder:
         self._bg_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/backgrounds/'))]
         self._bm_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/binary_masks/'))]
 
-    def _list_rois(self):
+    def _list_rois(self) -> None:
         rois_file = self._load_rois_file()
 
         roi = []
@@ -68,11 +69,11 @@ class ImageFolder:
         self._rois.append(roi)
 
     @property
-    def num_images(self):
+    def num_images(self) -> int:
         return len(self._im_files)
 
     @property
-    def curr_files(self):
+    def curr_files(self) -> [str, str, str]:
         im_raw = os.path.join(self.folder, self._im_files[self._curr_frame_no])
         im_bg = os.path.join(self.folder, 'analysis/backgrounds',
                              '{}.bg.npy'.format(self._im_files[self._curr_frame_no]))
@@ -81,37 +82,38 @@ class ImageFolder:
         return im_raw, im_bg, im_bm
 
     @property
-    def curr_frames(self):
+    def curr_frames(self) -> [QPixmap, QPixmap, QPixmap, QPixmap]:
         ims = self.curr_files
         im_raw = load_image(ims[0], 'raw')
         im_bg = load_image(ims[1], 'bg')
         im_bm = load_image(ims[2], 'bm')
         bg_sub = bg_subtract(ims[0], ims[1])
+
         return im_raw, im_bg, im_bm, bg_sub
 
     @property
-    def framepos(self):
+    def framepos(self) -> [int, str]:
         cf_no = self._curr_frame_no
         cf_fn = self._im_files[self._curr_frame_no]
 
         return cf_no, cf_fn
 
     @property
-    def rois(self):
+    def rois(self) -> list:
         return self._rois[self._curr_frame_no]
 
     @property
-    def num_frames(self):
+    def num_frames(self) -> int:
         return self._no_of_frames
 
-    def next_image(self):
+    def next_image(self) -> None:
         self._curr_frame_no = (self._curr_frame_no + 1) % self.num_images
 
-    def prev_image(self):
+    def prev_image(self) -> None:
         self._curr_frame_no = (self._curr_frame_no - 1) % self.num_images
 
 
-def load_image(file, im_type='raw'):
+def load_image(file: str, im_type: str = 'raw') -> QPixmap:
     if im_type == 'bm':
         im = np.load(file).astype('uint8').squeeze() * 255
     else:
@@ -123,7 +125,7 @@ def load_image(file, im_type='raw'):
     return im
 
 
-def bg_subtract(im_raw, im_bg):
+def bg_subtract(im_raw: str, im_bg: str) -> QPixmap:
     im_raw, im_bg = np.load(im_raw).squeeze(), np.load(im_bg).squeeze()
 
     im = im_raw - im_bg

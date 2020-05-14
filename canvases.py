@@ -1,29 +1,29 @@
 from PyQt5.QtCore import QRect, QSize, Qt
-from PyQt5.QtGui import QPainter, QPixmap, QColor
-from PyQt5.QtWidgets import QLabel, QSizePolicy
+from PyQt5.QtGui import QColor, QMouseEvent, QPainter, QPixmap
+from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 
 
 class MainCanvas(QLabel):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget) -> None:
         super(MainCanvas, self).__init__(parent)
         self._w, self._h = 1224, 425
         self.setMinimumSize(QSize(self._w, self._h))
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self._set_canvas()
 
-    def _set_canvas(self):
+    def _set_canvas(self) -> None:
         canvas = QPixmap(self._w, self._h)
         canvas.fill(QColor('transparent'))
         self.setPixmap(canvas)
 
 
 class RoIsCanvas(MainCanvas):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget) -> None:
         super(RoIsCanvas, self).__init__(parent)
 
         self.pen_color = QColor('#77FF0000')
 
-    def draw_rois(self, rois):
+    def draw_rois(self, rois: list) -> None:
         self.erase_rois()
         painter = QPainter(self.pixmap())
         p = painter.pen()
@@ -37,7 +37,7 @@ class RoIsCanvas(MainCanvas):
         painter.end()
         self.update()
 
-    def erase_rois(self):
+    def erase_rois(self) -> None:
         painter = QPainter(self.pixmap())
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         extents = self.pixmap().rect()
@@ -47,14 +47,14 @@ class RoIsCanvas(MainCanvas):
 
 
 class PaintingCanvas(MainCanvas):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget) -> None:
         super(PaintingCanvas, self).__init__(parent)
 
         self.last_x, self.last_y = None, None
         self.pen_color = QColor('#FF0000')
 
-    def mouseMoveEvent(self, e):
-        if self.last_x is None: # First event.
+    def mouseMoveEvent(self, e: QMouseEvent) -> None:
+        if self.last_x is None:  # First event.
             self.last_x = e.x()
             self.last_y = e.y()
             return  # Ignore the first time.
@@ -72,11 +72,11 @@ class PaintingCanvas(MainCanvas):
         self.last_x = e.x()
         self.last_y = e.y()
 
-    def mouseReleaseEvent(self, e):
+    def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         self.last_x = None
         self.last_y = None
 
-    def erase_all(self):
+    def erase_all(self) -> None:
         painter = QPainter(self.pixmap())
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         extents = self.pixmap().rect()
@@ -86,17 +86,17 @@ class PaintingCanvas(MainCanvas):
 
 
 class ImageFrame(MainCanvas):
-    def __init__(self, parent):
+    def __init__(self, parent: QWidget) -> None:
         super(ImageFrame, self).__init__(parent)
         self.image = None  # im.scaled(1224, 425, Qt.KeepAspectRatioByExpanding)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event) -> None:
         painter = QPainter()
         painter.begin(self)
         if self.image is not None:
             painter.drawPixmap(0, 0, self.image)
         painter.end()
 
-    def update_image(self, im):
+    def update_image(self, im: QPixmap) -> None:
         self.image = im.scaled(self._w, self._h, Qt.KeepAspectRatioByExpanding)
         self.update()

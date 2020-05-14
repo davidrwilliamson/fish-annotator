@@ -7,7 +7,7 @@ from menus import *
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QMainWindow = None) -> None:
         super(MainWindow, self).__init__(parent)
 
         self.im_folder = None
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Fish Annotator")
 
-    def update_lbl_frame(self):
+    def update_lbl_frame(self) -> None:
         folder = self.im_folder.folder
         cf_no, cf_fn = self.im_folder.framepos
         num_frames = self.im_folder.num_frames
@@ -61,12 +61,12 @@ class MainWindow(QMainWindow):
         self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
 
     @pyqtSlot(ImageFolder)
-    def set_im_folder(self, im_folder):
+    def set_im_folder(self, im_folder: ImageFolder) -> None:
         self.im_folder = im_folder
         self.change_layer(0)
 
     @pyqtSlot(int)
-    def change_layer(self, im_idx):
+    def change_layer(self, im_idx: int) -> None:
         curr_frames = self.im_folder.curr_frames
         im = curr_frames[im_idx]
         self.curr_layer = im_idx
@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         self.update_lbl_frame()
 
     @pyqtSlot(bool)
-    def toggle_rois(self, checked):
+    def toggle_rois(self, checked: bool) -> None:
         self.draw_rois = checked
         if checked:
             rois = self.im_folder.rois
@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
             self.rois_canvas.erase_rois()
 
     @pyqtSlot(int)
-    def change_frame(self, direction):
+    def change_frame(self, direction: int) -> None:
         if direction > 0:
             self.im_folder.next_image()
         if direction < 0:
@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
             self.rois_canvas.draw_rois(self.im_folder.rois)
 
     @pyqtSlot(int)
-    def bad_frame(self, state):
+    def bad_frame(self, state: int) -> None:
         if state == 0:
             # unchecked, mark frame as not bad
             pass
@@ -102,5 +102,5 @@ class MainWindow(QMainWindow):
             pass
 
     @pyqtSlot(int)
-    def interesting_frame(self, state):
+    def interesting_frame(self, state: int) -> None:
         pass
