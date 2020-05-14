@@ -15,13 +15,15 @@ class ImageFolder:
         self._im_files = []
         self._bg_files = []
         self._bm_files = []
+        self._rois = []
 
         self._curr_frame_no = 0
         self._no_of_frames = 0
 
         self._list_image_files()
+        self._list_rois()
 
-    def _list_image_files(self):
+    def _load_rois_file(self):
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
 
         if os.path.isfile(rois_filename):
@@ -29,6 +31,11 @@ class ImageFolder:
         else:
             print('{}: RoIs file missing.'.format(self.folder))
             return
+
+        return rois_file
+
+    def _list_image_files(self):
+        rois_file = self._load_rois_file()
 
         self._all_files = [file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc']
         im_files = []
@@ -43,6 +50,23 @@ class ImageFolder:
         self._no_of_frames = len(im_files)
         self._bg_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/backgrounds/'))]
         self._bm_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/binary_masks/'))]
+
+    def _list_rois(self):
+        rois_file = self._load_rois_file()
+
+        roi = []
+        for line in rois_file.readlines():
+            r = re.match('^roi:', line)
+            if r:
+                roi.append(line.split(': ')[1].strip())
+            f = re.match('^filename:', line)
+            if f:
+                if roi:
+                    self._rois.append(roi)
+                    roi = []
+            else:
+                print ('Unexpected line in RoIs file.')
+        self._rois.append(roi)
 
     @property
     def num_images(self):
@@ -65,11 +89,15 @@ class ImageFolder:
         return im_raw, im_bg, im_bm, bg_sub
 
     @property
-    def curr_framepos(self):
+    def framepos(self):
         cf_no = self._curr_frame_no
         cf_fn = self._im_files[self._curr_frame_no]
 
         return cf_no, cf_fn
+
+    @property
+    def rois(self):
+        pass
 
     @property
     def num_frames(self):
@@ -138,7 +166,6 @@ class MainWindow(QtWidgets.QMainWindow):
         right_buttons = RightButtons()
         grid_layout.addWidget(right_buttons, 1, 1)
 
-        # self.setCentralWidget(self.label)
         self.setCentralWidget(placeholder)
         self.setMenuWidget(main_menu)
         self.setWindowTitle("Fish Annotator")
@@ -149,7 +176,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_lbl_frame(self):
         folder = self.im_folder.folder
-        cf_no, cf_fn = self.im_folder.curr_framepos
+        cf_no, cf_fn = self.im_folder.framepos
         num_frames = self.im_folder.num_frames
         self.lbl_frame.setText('Folder:  {}\nFile:      {}'.format(folder, cf_fn))
         self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
@@ -286,6 +313,9 @@ class BottomRightButtons(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BottomRightButtons, self).__init__(parent)
         brb_layout = QtWidgets.QGridLayout(self)
+
+        # We want check boxes for: bad frame, frame of interest
+        # Maybe also for more than one fish in frame? Text box that takes a number?
 
 
 class PaintingCanvas(QtWidgets.QLabel):
