@@ -146,38 +146,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.curr_layer = 0
         self.draw_rois = False
 
+        # Menubar
         main_menu = MainMenu(self)
+        self.setMenuWidget(main_menu)
 
         self.image_frame = ImageFrame(self)
         self.paint_canvas = PaintingCanvas(self)
         self.rois_canvas = RoIsCanvas(self)
-        self.lbl_frame = QtWidgets.QLabel()
-        self.lbl_frame_no = QtWidgets.QLabel()
+        self.lbl_frame = QtWidgets.QLabel('\n')
+        self.lbl_frame_no = QtWidgets.QLabel('\n')
         self.lbl_frame_no.setAlignment(Qt.AlignRight)
 
+        # Set up layout of window inside central placeholder widget
         placeholder = QtWidgets.QWidget()
+        self.setCentralWidget(placeholder)
         grid_layout = QtWidgets.QGridLayout(placeholder)
-        grid_layout.addWidget(self.lbl_frame, 0, 0, 1, 1)
-        grid_layout.addWidget(self.lbl_frame_no, 0, 0, 1, 1)
-
+        grid_layout.addWidget(self.lbl_frame, 0, 0)
+        grid_layout.addWidget(self.lbl_frame_no, 0, 0)
         grid_layout.addWidget(self.image_frame, 1, 0)
         grid_layout.addWidget(self.rois_canvas, 1, 0)
         grid_layout.addWidget(self.paint_canvas, 1, 0)
 
+        # Add various sets of buttons
         bottom_buttons = BottomButtons()
         grid_layout.addWidget(bottom_buttons, 2, 0)
-
         right_buttons = RightButtons()
         grid_layout.addWidget(right_buttons, 1, 1)
+        br_buttons = BottomRightButtons()
+        grid_layout.addWidget(br_buttons, 2, 1)
 
-        self.setCentralWidget(placeholder)
-        self.setMenuWidget(main_menu)
-        self.setWindowTitle("Fish Annotator")
-
+        # Connect up button signals
         main_menu.sgnl_im_folder.connect(self.set_im_folder)
         right_buttons.sgnl_change_im_layer.connect(self.change_layer)
         right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
         bottom_buttons.sgnl_change_frame.connect(self.change_frame)
+        br_buttons.sgnl_cb_bad_changed.connect(self.bad_frame)
+        br_buttons.sgnl_cb_interest_changed.connect(self.interesting_frame)
+
+        self.setWindowTitle("Fish Annotator")
 
     def update_lbl_frame(self):
         folder = self.im_folder.folder
@@ -217,6 +223,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.change_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
+
+    @pyqtSlot(int)
+    def bad_frame(self, state):
+        if state == 0:
+            # unchecked, mark frame as not bad
+            pass
+        else:
+            # checked, mark frame as bad
+            pass
+
+    @pyqtSlot(int)
+    def interesting_frame(self, state):
+        pass
 
 
 class MainMenu(QtWidgets.QMenuBar):
@@ -259,14 +278,11 @@ class BottomButtons(QtWidgets.QWidget):
         bb_layout.addWidget(btn_prev, 1, 0)
         bb_layout.addWidget(btn_next, 1, 1)
 
-        btn_prev.clicked.connect(self.call_prev)
-        btn_next.clicked.connect(self.call_next)
+        btn_prev.clicked.connect(lambda: self.call_change(-1))
+        btn_next.clicked.connect(lambda: self.call_change(1))
 
-    def call_prev(self):
-        self.sgnl_change_frame.emit(-1)
-
-    def call_next(self):
-        self.sgnl_change_frame.emit(1)
+    def call_change(self, direction):
+        self.sgnl_change_frame.emit(direction)
 
 
 class RightButtons(QtWidgets.QWidget):
@@ -280,25 +296,26 @@ class RightButtons(QtWidgets.QWidget):
         # Column 0
         lbl_layers = QtWidgets.QLabel('Layers')
         lbl_layers.setAlignment(Qt.AlignCenter)
-        btn_raw_im = QtWidgets.QPushButton('Raw Image')
-        btn_bg_sub = QtWidgets.QPushButton('Background Subtracted')
-        btn_bg_im = QtWidgets.QPushButton('Background')
-        btn_bm_im = QtWidgets.QPushButton('Binary Mask')
-        btn_rois = QtWidgets.QPushButton('RoIs')
-        btn_rois.setCheckable(True)
+        self.btn_raw_im = QtWidgets.QPushButton('Raw Image')
+        self.btn_bg_sub = QtWidgets.QPushButton('Background Subtracted')
+        self.btn_bg_im = QtWidgets.QPushButton('Background')
+        self.btn_bm_im = QtWidgets.QPushButton('Binary Mask')
+        self.btn_rois = QtWidgets.QPushButton('RoIs')
+        for btn in [self.btn_raw_im, self.btn_bg_sub, self.btn_bg_im, self.btn_bm_im, self.btn_rois]:
+            btn.setCheckable(True)
 
-        btn_raw_im.clicked.connect(self.call_raw_im)
-        btn_bg_im.clicked.connect(self.call_bg_im)
-        btn_bm_im.clicked.connect(self.call_bm_im)
-        btn_bg_sub.clicked.connect(self.call_bg_sub)
-        btn_rois.toggled.connect(self.call_rois)
+        self.btn_raw_im.clicked.connect(lambda: self.call_btn(0))
+        self.btn_bg_im.clicked.connect(lambda: self.call_btn(1))
+        self.btn_bm_im.clicked.connect(lambda: self.call_btn(2))
+        self.btn_bg_sub.clicked.connect(lambda: self.call_btn(3))
+        self.btn_rois.toggled.connect(self.call_rois)
 
         rb_layout.addWidget(lbl_layers, 0, 0)
-        rb_layout.addWidget(btn_raw_im, 1, 0)
-        rb_layout.addWidget(btn_bg_im, 3, 0)
-        rb_layout.addWidget(btn_bg_sub, 2, 0)
-        rb_layout.addWidget(btn_bm_im, 4, 0)
-        rb_layout.addWidget(btn_rois, 5, 0)
+        rb_layout.addWidget(self.btn_raw_im, 1, 0)
+        rb_layout.addWidget(self.btn_bg_im, 3, 0)
+        rb_layout.addWidget(self.btn_bg_sub, 2, 0)
+        rb_layout.addWidget(self.btn_bm_im, 4, 0)
+        rb_layout.addWidget(self.btn_rois, 5, 0)
 
         # Column 1
         lbl_paint = QtWidgets.QLabel('Paint Tools')
@@ -313,29 +330,44 @@ class RightButtons(QtWidgets.QWidget):
         rb_layout.addWidget(btn_fill, 2, 1)
         rb_layout.addWidget(btn_erase, 3, 1)
 
-    def call_raw_im(self):
-        self.sgnl_change_im_layer.emit(0)
-
-    def call_bg_im(self):
-        self.sgnl_change_im_layer.emit(1)
-
-    def call_bm_im(self):
-        self.sgnl_change_im_layer.emit(2)
-
-    def call_bg_sub(self):
-        self.sgnl_change_im_layer.emit(3)
+    def call_btn(self, idx):
+        self.sgnl_change_im_layer.emit(idx)
+        self.uncheck_others(idx)
 
     def call_rois(self, checked):
         self.sgnl_toggle_rois.emit(checked)
 
+    def uncheck_others(self, btn):
+        buttons = [self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub]
+        for i in range(len(buttons)):
+            if i != btn:
+                buttons[i].setChecked(False)
+
 
 class BottomRightButtons(QtWidgets.QWidget):
+    # We want check boxes for: bad frame, frame of interest
+    # Maybe also for more than one fish in frame? Text box that takes a number?
+    sgnl_cb_bad_changed = pyqtSignal(int)
+    sgnl_cb_interest_changed = pyqtSignal(int)
+
     def __init__(self, parent=None):
         super(BottomRightButtons, self).__init__(parent)
         brb_layout = QtWidgets.QGridLayout(self)
 
-        # We want check boxes for: bad frame, frame of interest
-        # Maybe also for more than one fish in frame? Text box that takes a number?
+        cb_bad = QtWidgets.QCheckBox('Bad frame')
+        cb_interest = QtWidgets.QCheckBox('Interesting frame')
+
+        brb_layout.addWidget(cb_bad, 0, 0)
+        brb_layout.addWidget(cb_interest, 1, 0)
+
+        cb_bad.stateChanged.connect(self.call_cb_bad)
+        cb_interest.stateChanged.connect(self.call_cb_interest)
+
+    def call_cb_bad(self, state):
+        self.sgnl_cb_bad_changed.emit(state)
+
+    def call_cb_interest(self, state):
+        self.sgnl_cb_interest_changed.emit(state)
 
 
 class MainCanvas(QtWidgets.QLabel):
