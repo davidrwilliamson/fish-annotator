@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QSize, Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QSize, Qt, QRect, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import *
 import numpy as np
 import qimage2ndarray as q2n
@@ -57,15 +57,15 @@ class ImageFolder:
         roi = []
         for line in rois_file.readlines():
             r = re.match('^roi:', line)
+            f = re.match('^filename:', line)
             if r:
                 roi.append(line.split(': ')[1].strip())
-            f = re.match('^filename:', line)
-            if f:
+            elif f:
                 if roi:
                     self._rois.append(roi)
                     roi = []
             else:
-                print ('Unexpected line in RoIs file.')
+                print('Unexpected line in RoIs file.')
         self._rois.append(roi)
 
     @property
@@ -97,7 +97,7 @@ class ImageFolder:
 
     @property
     def rois(self):
-        pass
+        return self._rois[self._curr_frame_no]
 
     @property
     def num_frames(self):
@@ -144,11 +144,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.im_folder = None
         self.curr_layer = 0
+        self.draw_rois = False
 
         main_menu = MainMenu(self)
 
         self.image_frame = ImageFrame(self)
         self.paint_canvas = PaintingCanvas(self)
+        self.rois_canvas = RoIsCanvas(self)
         self.lbl_frame = QtWidgets.QLabel()
         self.lbl_frame_no = QtWidgets.QLabel()
         self.lbl_frame_no.setAlignment(Qt.AlignRight)
@@ -157,7 +159,9 @@ class MainWindow(QtWidgets.QMainWindow):
         grid_layout = QtWidgets.QGridLayout(placeholder)
         grid_layout.addWidget(self.lbl_frame, 0, 0, 1, 1)
         grid_layout.addWidget(self.lbl_frame_no, 0, 0, 1, 1)
+
         grid_layout.addWidget(self.image_frame, 1, 0)
+        grid_layout.addWidget(self.rois_canvas, 1, 0)
         grid_layout.addWidget(self.paint_canvas, 1, 0)
 
         bottom_buttons = BottomButtons()
@@ -172,6 +176,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         main_menu.sgnl_im_folder.connect(self.set_im_folder)
         right_buttons.sgnl_change_im_layer.connect(self.change_layer)
+        right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
         bottom_buttons.sgnl_change_frame.connect(self.change_frame)
 
     def update_lbl_frame(self):
@@ -194,6 +199,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.image_frame.update_image(im)
         self.update_lbl_frame()
 
+    @pyqtSlot(bool)
+    def toggle_rois(self, checked):
+        self.draw_rois = checked
+        if checked:
+            rois = self.im_folder.rois
+            self.rois_canvas.draw_rois(rois)
+        else:
+            self.rois_canvas.erase_rois()
+
     @pyqtSlot(int)
     def change_frame(self, direction):
         if direction > 0:
@@ -201,6 +215,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if direction < 0:
             self.im_folder.prev_image()
         self.change_layer(self.curr_layer)
+        if self.draw_rois:
+            self.rois_canvas.draw_rois(self.im_folder.rois)
 
 
 class MainMenu(QtWidgets.QMenuBar):
@@ -255,7 +271,7 @@ class BottomButtons(QtWidgets.QWidget):
 
 class RightButtons(QtWidgets.QWidget):
     sgnl_change_im_layer = pyqtSignal(int)
-    sgnl_toggle_rois = pyqtSignal()
+    sgnl_toggle_rois = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super(RightButtons, self).__init__(parent)
@@ -296,6 +312,8 @@ class RightButtons(QtWidgets.QWidget):
         rb_layout.addWidget(btn_fill, 2, 1)
         rb_layout.addWidget(btn_erase, 3, 1)
 
+        btn_rois.toggled.connect(self.call_rois)
+
     def call_raw_im(self):
         self.sgnl_change_im_layer.emit(0)
 
@@ -308,6 +326,9 @@ class RightButtons(QtWidgets.QWidget):
     def call_bg_sub(self):
         self.sgnl_change_im_layer.emit(3)
 
+    def call_rois(self, checked):
+        self.sgnl_toggle_rois.emit(checked)
+
 
 class BottomRightButtons(QtWidgets.QWidget):
     def __init__(self, parent=None):
@@ -318,15 +339,53 @@ class BottomRightButtons(QtWidgets.QWidget):
         # Maybe also for more than one fish in frame? Text box that takes a number?
 
 
-class PaintingCanvas(QtWidgets.QLabel):
+class MainCanvas(QtWidgets.QLabel):
     def __init__(self, parent):
-        super(PaintingCanvas, self).__init__(parent)
-        self.setMinimumSize(QSize(1224, 425))
+        super(MainCanvas, self).__init__(parent)
+        self._w, self._h = 1224, 425
+        self.setMinimumSize(QSize(self._w, self._h))
         self.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self._set_canvas()
 
-        canvas = QPixmap(1224, 425)
+    def _set_canvas(self):
+        canvas = QPixmap(self._w, self._h)
         canvas.fill(QColor('transparent'))
         self.setPixmap(canvas)
+
+
+class RoIsCanvas(MainCanvas):
+    def __init__(self, parent):
+        super(RoIsCanvas, self).__init__(parent)
+
+        self.pen_color = QColor('#77FF0000')
+
+    def draw_rois(self, rois):
+        self.erase_rois()
+        painter = QPainter(self.pixmap())
+        p = painter.pen()
+        p.setWidth(2)
+        p.setColor(self.pen_color)
+        painter.setPen(p)
+        for roi in rois:
+            roi_int = list(map(int, roi.split(',')))
+            print(roi_int)
+            roi_qrect = QRect(roi_int[0] / 2, roi_int[1] / 2, (roi_int[2] - roi_int[0]) / 2, (roi_int[3] - roi_int[1]) / 2)
+            painter.drawRect(roi_qrect)
+        painter.end()
+        self.update()
+
+    def erase_rois(self):
+        painter = QPainter(self.pixmap())
+        painter.setCompositionMode(QPainter.CompositionMode_Clear)
+        extents = self.pixmap().rect()
+        painter.eraseRect(extents)
+        painter.end()
+        self.update()
+
+
+class PaintingCanvas(MainCanvas):
+    def __init__(self, parent):
+        super(PaintingCanvas, self).__init__(parent)
 
         self.last_x, self.last_y = None, None
         self.pen_color = QColor('#FF0000')
@@ -335,7 +394,7 @@ class PaintingCanvas(QtWidgets.QLabel):
         if self.last_x is None: # First event.
             self.last_x = e.x()
             self.last_y = e.y()
-            return # Ignore the first time.
+            return  # Ignore the first time.
 
         painter = QPainter(self.pixmap())
         p = painter.pen()
@@ -365,22 +424,20 @@ class PaintingCanvas(QtWidgets.QLabel):
     #     painter.end()
 
 
-class ImageFrame(QtWidgets.QWidget):
+class ImageFrame(MainCanvas):
     def __init__(self, parent):
         super(ImageFrame, self).__init__(parent)
-        self.setMinimumSize(QSize(1224, 425))
-        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.image = None  # im.scaled(1224, 425, Qt.KeepAspectRatioByExpanding)
 
     def paintEvent(self, event):
-        qp = QPainter()
-        qp.begin(self)
+        painter = QPainter()
+        painter.begin(self)
         if self.image is not None:
-            qp.drawPixmap(0, 0, self.image)
-        qp.end()
+            painter.drawPixmap(0, 0, self.image)
+        painter.end()
 
     def update_image(self, im):
-        self.image = im.scaled(1224, 425, Qt.KeepAspectRatioByExpanding)
+        self.image = im.scaled(self._w, self._h, Qt.KeepAspectRatioByExpanding)
         self.update()
 
 
