@@ -291,6 +291,7 @@ class RightButtons(QtWidgets.QWidget):
         btn_bg_im.clicked.connect(self.call_bg_im)
         btn_bm_im.clicked.connect(self.call_bm_im)
         btn_bg_sub.clicked.connect(self.call_bg_sub)
+        btn_rois.toggled.connect(self.call_rois)
 
         rb_layout.addWidget(lbl_layers, 0, 0)
         rb_layout.addWidget(btn_raw_im, 1, 0)
@@ -311,8 +312,6 @@ class RightButtons(QtWidgets.QWidget):
         rb_layout.addWidget(btn_paint, 1, 1)
         rb_layout.addWidget(btn_fill, 2, 1)
         rb_layout.addWidget(btn_erase, 3, 1)
-
-        btn_rois.toggled.connect(self.call_rois)
 
     def call_raw_im(self):
         self.sgnl_change_im_layer.emit(0)
@@ -368,7 +367,6 @@ class RoIsCanvas(MainCanvas):
         painter.setPen(p)
         for roi in rois:
             roi_int = list(map(int, roi.split(',')))
-            print(roi_int)
             roi_qrect = QRect(roi_int[0] / 2, roi_int[1] / 2, (roi_int[2] - roi_int[0]) / 2, (roi_int[3] - roi_int[1]) / 2)
             painter.drawRect(roi_qrect)
         painter.end()
@@ -413,15 +411,13 @@ class PaintingCanvas(MainCanvas):
         self.last_x = None
         self.last_y = None
 
-    # def draw_something(self):
-    #     painter = QPainter(self.label.pixmap())
-    #     pen = QPen()
-    #     pen.setWidth(3)
-    #     pen.setColor(QColor('#EB5160'))
-    #     painter.setPen(pen)
-    #     painter.drawRect(50, 50, 100, 100)
-    #     painter.drawRect(60, 60, 150, 100)
-    #     painter.end()
+    def erase_all(self):
+        painter = QPainter(self.pixmap())
+        painter.setCompositionMode(QPainter.CompositionMode_Clear)
+        extents = self.pixmap().rect()
+        painter.eraseRect(extents)
+        painter.end()
+        self.update()
 
 
 class ImageFrame(MainCanvas):
