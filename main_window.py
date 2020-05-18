@@ -1,5 +1,6 @@
 from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
+from typing import List
 
 from buttons import *
 from canvases import *
@@ -10,9 +11,9 @@ class MainWindow(QMainWindow):
     def __init__(self, parent: QMainWindow = None) -> None:
         super(MainWindow, self).__init__(parent)
 
-        self.im_folder = None
-        self.curr_layer = 0
-        self.draw_rois = False
+        self.im_folder: ImageFolder = None
+        self.curr_layer: int = 0
+        self.draw_rois: bool = False
 
         # Menu bar
         main_menu = MainMenu(self)
@@ -24,8 +25,8 @@ class MainWindow(QMainWindow):
         self.lbl_frame_no = QLabel('\n')
         self.lbl_frame_no.setAlignment(Qt.AlignRight)
 
-        self.saved_canvases = []
-        self.annotation_canvases = []
+        self.saved_canvases: List[QBuffer] = []
+        self.annotation_canvases: List[PaintingCanvas] = []
         self.annotation_canvases.append(PaintingCanvas(self, 'red'))
         self.annotation_canvases.append(PaintingCanvas(self, 'blue'))
         self.annotation_canvases.append(PaintingCanvas(self, 'green'))
@@ -72,13 +73,15 @@ class MainWindow(QMainWindow):
     def save_annotations(self) -> None:
         canvases = []
         for canvas in self.annotation_canvases:
-            buffer = QBuffer()
-            buffer.open(QIODevice.ReadWrite)
-            canvas.pixmap().save(buffer, 'png')
-            buffer.close()
-            canvases.append(buffer)
-            canvas.erase_all()
-        self.saved_canvases[self.im_folder.framepos[0]] = canvases
+            if canvas.is_used:  # Don't bother to save unless something has actually been drawn
+                buffer = QBuffer()
+                buffer.open(QIODevice.ReadWrite)
+                canvas.pixmap().save(buffer, 'png')
+                buffer.close()
+                canvases.append(buffer)
+                canvas.erase_all()
+        if canvases:  # If canvases == [] this will be False
+            self.saved_canvases[self.im_folder.framepos[0]] = canvases
 
     def load_annotations(self) -> None:
         k = self.im_folder.framepos[0]

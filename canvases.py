@@ -54,6 +54,7 @@ class PaintingCanvas(MainCanvas):
         self.last_x, self.last_y = None, None
         self.pen_colour = QColor(colour)
         self.pen_size = 8
+        self.is_used = False
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if self.last_x is None:  # First event.
@@ -69,6 +70,7 @@ class PaintingCanvas(MainCanvas):
         painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         painter.end()
         self.update()
+        self.is_used = True  # Mark if the canvas has anything drawn on it
 
         # Update the origin for next time.
         self.last_x = e.x()
@@ -85,6 +87,7 @@ class PaintingCanvas(MainCanvas):
         painter.eraseRect(extents)
         painter.end()
         self.update()
+        self.is_used = False  # Now that the canvas is empty we mark it as unused
 
 
 class ImageFrame(MainCanvas):

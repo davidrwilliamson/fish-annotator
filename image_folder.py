@@ -4,7 +4,7 @@ import re
 import qimage2ndarray as q2n
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
-from typing import TextIO
+from typing import TextIO, Tuple
 
 
 class ImageFolder:
@@ -71,7 +71,7 @@ class ImageFolder:
         return len(self._im_files)
 
     @property
-    def curr_files(self) -> [str, str, str]:
+    def curr_files(self) -> Tuple[str, str, str]:
         im_raw = os.path.join(self.folder, self._im_files[self._curr_frame_no])
         im_bg = os.path.join(self.folder, 'analysis/backgrounds',
                              '{}.bg.npy'.format(self._im_files[self._curr_frame_no]))
@@ -80,7 +80,7 @@ class ImageFolder:
         return im_raw, im_bg, im_bm
 
     @property
-    def curr_frames(self) -> [QPixmap, QPixmap, QPixmap, QPixmap]:
+    def curr_frames(self) -> Tuple[QPixmap, QPixmap, QPixmap, QPixmap]:
         ims = self.curr_files
         im_raw = load_image(ims[0], 'raw')
         im_bg = load_image(ims[1], 'bg')
@@ -90,7 +90,7 @@ class ImageFolder:
         return im_raw, im_bg, im_bm, bg_sub
 
     @property
-    def framepos(self) -> [int, str]:
+    def framepos(self) -> Tuple[int, str]:
         cf_no = self._curr_frame_no
         cf_fn = self._im_files[self._curr_frame_no]
 
