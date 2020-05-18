@@ -21,14 +21,14 @@ class RoIsCanvas(MainCanvas):
     def __init__(self, parent: QWidget) -> None:
         super(RoIsCanvas, self).__init__(parent)
 
-        self.pen_color = QColor('#77FF0000')
+        self.pen_colour = QColor('#77FF0000')
 
     def draw_rois(self, rois: list) -> None:
         self.erase_rois()
         painter = QPainter(self.pixmap())
         p = painter.pen()
         p.setWidth(2)
-        p.setColor(self.pen_color)
+        p.setColor(self.pen_colour)
         painter.setPen(p)
         for roi in rois:
             roi_int = list(map(int, roi.split(',')))
@@ -48,11 +48,12 @@ class RoIsCanvas(MainCanvas):
 
 
 class PaintingCanvas(MainCanvas):
-    def __init__(self, parent: QWidget) -> None:
+    def __init__(self, parent: QWidget, colour: str) -> None:
         super(PaintingCanvas, self).__init__(parent)
 
         self.last_x, self.last_y = None, None
-        self.pen_color = QColor('#FF0000')
+        self.pen_colour = QColor(colour)
+        self.pen_size = 8
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if self.last_x is None:  # First event.
@@ -62,8 +63,8 @@ class PaintingCanvas(MainCanvas):
 
         painter = QPainter(self.pixmap())
         p = painter.pen()
-        p.setWidth(8)
-        p.setColor(self.pen_color)
+        p.setWidth(self.pen_size)
+        p.setColor(self.pen_colour)
         painter.setPen(p)
         painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         painter.end()
