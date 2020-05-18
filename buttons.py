@@ -143,13 +143,13 @@ class RightButtons(QWidget):
             if i != btn:
                 buttons[i].setChecked(False)
 
-    def enable_buttons(self, enable: bool = True) -> None:
+    def enable_buttons(self, enable: bool = True, selection=range(11)) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
                    self.btn_paint, self.btn_fill, self.btn_erase]
-        for btn in buttons:
-            btn.setEnabled(enable)
+        for btn in selection:
+            buttons[btn].setEnabled(enable)
 
     def set_lbl_curr_brush(self, ann_canvas, draw: bool) -> None:
         im = self.lbl_curr_brush_img.pixmap()
