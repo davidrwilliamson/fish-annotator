@@ -29,8 +29,7 @@ class ImageFolder:
         if os.path.isfile(rois_filename):
             rois_file = open(rois_filename, 'rt')
         else:
-            print('{}: RoIs file missing.'.format(self.folder))
-            return
+            raise RuntimeError('{}: RoIs file missing.'.format(self.folder))
 
         return rois_file
 
@@ -43,7 +42,6 @@ class ImageFolder:
             f = re.match('^filename:', line)
             if f:
                 fn = line.split(': ')[1].strip()
-                # fn = os.path.join(self.folder, fn)
                 im_files.append(fn)
 
         self._im_files = im_files

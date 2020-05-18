@@ -36,20 +36,20 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.paint_canvas, 1, 0)
 
         # Add various sets of buttons
-        bottom_buttons = BottomButtons()
-        grid_layout.addWidget(bottom_buttons, 2, 0)
-        right_buttons = RightButtons()
-        grid_layout.addWidget(right_buttons, 1, 1)
-        br_buttons = BottomRightButtons()
-        grid_layout.addWidget(br_buttons, 2, 1)
+        self.bottom_buttons = BottomButtons()
+        grid_layout.addWidget(self.bottom_buttons, 2, 0)
+        self.right_buttons = RightButtons()
+        grid_layout.addWidget(self.right_buttons, 1, 1)
+        self.br_buttons = BottomRightButtons()
+        grid_layout.addWidget(self.br_buttons, 2, 1)
 
         # Connect up button signals
         main_menu.sgnl_im_folder.connect(self.set_im_folder)
-        right_buttons.sgnl_change_im_layer.connect(self.change_layer)
-        right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
-        bottom_buttons.sgnl_change_frame.connect(self.change_frame)
-        br_buttons.sgnl_cb_bad_changed.connect(self.bad_frame)
-        br_buttons.sgnl_cb_interest_changed.connect(self.interesting_frame)
+        self.right_buttons.sgnl_change_im_layer.connect(self.change_layer)
+        self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
+        self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
+        self.br_buttons.sgnl_cb_bad_changed.connect(self.bad_frame)
+        self.br_buttons.sgnl_cb_interest_changed.connect(self.interesting_frame)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -64,6 +64,9 @@ class MainWindow(QMainWindow):
     def set_im_folder(self, im_folder: ImageFolder) -> None:
         self.im_folder = im_folder
         self.change_layer(0)
+        self.right_buttons.enable_buttons()
+        self.bottom_buttons.enable_buttons()
+        self.br_buttons.enable_buttons()
 
     @pyqtSlot(int)
     def change_layer(self, im_idx: int) -> None:
