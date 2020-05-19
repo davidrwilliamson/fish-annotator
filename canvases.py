@@ -115,24 +115,24 @@ class ImageFrame(MainCanvas):
             painter.drawPixmap(0, 0, self.image)
         painter.end()
 
-    def _adjust_image(self):
+    def _adjust_image(self) -> None:
         im: QImage = self.image.toImage()
-        im = q2n.rgb_view(im)
+        np_im = q2n.rgb_view(im)
 
-        alpha = self._contrast_adjustment
-        beta = self._brightness_adjustment
-        new_im = convertScaleAbs(im, alpha=alpha, beta=beta)
+        alpha: float = self._contrast_adjustment
+        beta: int = self._brightness_adjustment
+        np_im = convertScaleAbs(np_im, alpha=alpha, beta=beta)
 
-        im = q2n.array2qimage(new_im)
-        pmap = QPixmap.fromImage(im)
+        q_im = q2n.array2qimage(np_im)
+        pmap = QPixmap.fromImage(q_im)
         self._adjusted_im = pmap
         self.update()
 
-    def set_brightness(self, value: int):
+    def set_brightness(self, value: int) -> None:
         self._brightness_adjustment = value
         self._adjust_image()
 
-    def set_contrast(self, value: int):
+    def set_contrast(self, value: int) -> None:
         self._contrast_adjustment = value / 10.0
         self._adjust_image()
 
