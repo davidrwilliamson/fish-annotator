@@ -1,6 +1,9 @@
 from PyQt5.QtCore import QRect, QSize, Qt
-from PyQt5.QtGui import QColor, QMouseEvent, QPainter, QPixmap
+from PyQt5.QtGui import QColor, QImage, QMouseEvent, QPainter, QPixmap
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
+import qimage2ndarray as q2n
+import numpy as np
+from cv2 import convertScaleAbs
 
 
 class MainCanvas(QLabel):
@@ -53,7 +56,7 @@ class PaintingCanvas(MainCanvas):
 
         self.last_x, self.last_y = None, None
         self.pen_colour = QColor(colour)
-        self.pen_size = 8
+        self.pen_size = 5
         self.is_used = False
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
@@ -63,6 +66,9 @@ class PaintingCanvas(MainCanvas):
             return  # Ignore the first time.
 
         painter = QPainter(self.pixmap())
+        # Would like to have semi-transparent annotation overlays without painting looking bad
+        # p.setOpacity(0.5) after pen is set looks bad.
+        # painter.setCompositionMode(QPainter.CompositionMode_Overlay) doesn't seem to do anything useful?
         p = painter.pen()
         p.setWidth(self.pen_size)
         p.setColor(self.pen_colour)
@@ -70,6 +76,7 @@ class PaintingCanvas(MainCanvas):
         painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         painter.end()
         self.update()
+
         self.is_used = True  # Mark if the canvas has anything drawn on it
 
         # Update the origin for next time.
@@ -93,15 +100,43 @@ class PaintingCanvas(MainCanvas):
 class ImageFrame(MainCanvas):
     def __init__(self, parent: QWidget) -> None:
         super(ImageFrame, self).__init__(parent)
-        self.image = None  # im.scaled(1224, 425, Qt.KeepAspectRatioByExpanding)
+        self.image: QPixmap = None  # im.scaled(1224, 425, Qt.KeepAspectRatioByExpanding)
+
+        self._adjusted_im: QPixmap = None
+        self._brightness_adjustment = 0
+        self._contrast_adjustment = 1
 
     def paintEvent(self, event) -> None:
         painter = QPainter()
         painter.begin(self)
-        if self.image is not None:
+        if self._adjusted_im is not None:
+            painter.drawPixmap(0, 0, self._adjusted_im)
+        elif self.image is not None:
             painter.drawPixmap(0, 0, self.image)
         painter.end()
 
+    def _adjust_image(self):
+        im: QImage = self.image.toImage()
+        im = q2n.rgb_view(im)
+
+        alpha = self._contrast_adjustment
+        beta = self._brightness_adjustment
+        new_im = convertScaleAbs(im, alpha=alpha, beta=beta)
+
+        im = q2n.array2qimage(new_im)
+        pmap = QPixmap.fromImage(im)
+        self._adjusted_im = pmap
+        self.update()
+
+    def set_brightness(self, value: int):
+        self._brightness_adjustment = value
+        self._adjust_image()
+
+    def set_contrast(self, value: int):
+        self._contrast_adjustment = value / 10.0
+        self._adjust_image()
+
     def update_image(self, im: QPixmap) -> None:
         self.image = im.scaled(self._w, self._h, Qt.KeepAspectRatioByExpanding)
+        self._adjust_image()
         self.update()

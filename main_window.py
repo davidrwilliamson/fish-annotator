@@ -13,6 +13,7 @@ class MainWindow(QMainWindow):
 
         self.im_folder: ImageFolder = None
         self.curr_layer: int = 0
+        self.curr_ann_layer: int = -1
         self.draw_rois: bool = False
 
         # Menu bar
@@ -31,7 +32,7 @@ class MainWindow(QMainWindow):
         self.annotation_canvases.append(PaintingCanvas(self, 'blue'))
         self.annotation_canvases.append(PaintingCanvas(self, 'green'))
 
-        self.change_ann_layer(False, -1)  # Disables and hides annotation canvases
+        self.change_ann_layer(False, self.curr_ann_layer)  # Disables and hides annotation canvases
 
         # Set up layout of window inside central placeholder widget
         placeholder = QWidget()
@@ -57,7 +58,10 @@ class MainWindow(QMainWindow):
         self.right_buttons.sgnl_change_im_layer.connect(self.change_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
+        self.right_buttons.sgnl_sldr_brush_size.connect(self.adjust_brush_size)
         self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
+        self.bottom_buttons.sgnl_sldr_brightness.connect(self.adjust_brightness)
+        self.bottom_buttons.sgnl_sldr_contrast.connect(self.adjust_contrast)
         self.br_buttons.sgnl_cb_bad_changed.connect(self.bad_frame)
         self.br_buttons.sgnl_cb_interest_changed.connect(self.interesting_frame)
 
@@ -97,6 +101,7 @@ class MainWindow(QMainWindow):
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.change_layer(0)
         self.right_buttons.enable_buttons(selection=range(8))
+        self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
 
@@ -115,12 +120,15 @@ class MainWindow(QMainWindow):
             canvas.setVisible(False)
             # self.right_buttons.enable_buttons(False, range(9, 11))
         if ann_idx >= 0:  # This means we won't try to set the brush image before a canvas exists
-            self.right_buttons.enable_buttons(False, selection=range(8, 11))
+            self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
+            self.right_buttons.enable_buttons(False, selection=range(8, 13))
+            self.curr_ann_layer = ann_idx
             self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[ann_idx], checked)
         if checked:  # Lets us hide annotations again by unchecking button
+            self.right_buttons.btn_paint.setChecked(True)
             self.annotation_canvases[ann_idx].setEnabled(True)
             self.annotation_canvases[ann_idx].setVisible(True)
-            self.right_buttons.enable_buttons(selection=range(8, 11))
+            self.right_buttons.enable_buttons(selection=range(8, 13))
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:
@@ -142,6 +150,20 @@ class MainWindow(QMainWindow):
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
         self.load_annotations()
+
+    @pyqtSlot(int)
+    def adjust_brightness(self, value: int) -> None:
+        self.image_frame.set_brightness(value)
+
+    @pyqtSlot(int)
+    def adjust_contrast(self, value: int) -> None:
+        self.image_frame.set_contrast(value)
+
+    @pyqtSlot(int)
+    def adjust_brush_size(self, value: int) -> None:
+        for canvas in self.annotation_canvases:
+            canvas.pen_size = value
+        self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[self.curr_ann_layer], True)
 
     @pyqtSlot(int)
     def bad_frame(self, state: int) -> None:
