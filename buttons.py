@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import QCheckBox, QGridLayout, QHBoxLayout, QLabel, QPushBu
 
 class BottomButtons(QWidget):
     sgnl_change_frame = pyqtSignal(int)
-    sgnl_sldr_brightness = pyqtSignal(int)
-    sgnl_sldr_contrast = pyqtSignal(int)
+    sgnl_adjust_brightness = pyqtSignal(int)
+    sgnl_adjust_contrast = pyqtSignal(int)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomButtons, self).__init__(parent)
@@ -23,45 +23,45 @@ class BottomButtons(QWidget):
         layout_buttons.addWidget(self.btn_prev, 1, 0)
         layout_buttons.addWidget(self.btn_next, 1, 1)
 
-        self.btn_prev.clicked.connect(lambda: self.call_change(-1))
-        self.btn_next.clicked.connect(lambda: self.call_change(1))
+        self.btn_prev.clicked.connect(lambda: self._call_change(-1))
+        self.btn_next.clicked.connect(lambda: self._call_change(1))
 
         lbl_brightness = QLabel('Brightness')
         lbl_contrast = QLabel('Contrast')
-        self.sldr_brightness = QSlider(Qt.Horizontal)
-        self.sldr_brightness.setRange(-100, 100)
-        self.sldr_brightness.setValue(0)
-        self.sldr_contrast = QSlider(Qt.Horizontal)
-        self.sldr_contrast.setRange(0, 40)
-        self.sldr_contrast.setValue(10)
+        self._sldr_brightness = QSlider(Qt.Horizontal)
+        self._sldr_brightness.setRange(-100, 100)
+        self._sldr_brightness.setValue(0)
+        self._sldr_contrast = QSlider(Qt.Horizontal)
+        self._sldr_contrast.setRange(0, 40)
+        self._sldr_contrast.setValue(10)
 
         layout_sliders = QGridLayout()
         layout_sliders.addWidget(lbl_brightness, 0, 0)
         layout_sliders.addWidget(lbl_contrast, 0, 1)
-        layout_sliders.addWidget(self.sldr_brightness, 1, 0)
-        layout_sliders.addWidget(self.sldr_contrast, 1, 1)
+        layout_sliders.addWidget(self._sldr_brightness, 1, 0)
+        layout_sliders.addWidget(self._sldr_contrast, 1, 1)
 
         bb_layout.addLayout(layout_sliders)
         bb_layout.addLayout(layout_buttons)
 
-        self.sldr_brightness.valueChanged.connect(self.call_sldr_brightness)
-        self.sldr_contrast.valueChanged.connect(self.call_sldr_contrast)
+        self._sldr_brightness.valueChanged.connect(self._call_sldr_brightness)
+        self._sldr_contrast.valueChanged.connect(self._call_sldr_contrast)
 
         self.enable_buttons(False)
 
-    def call_change(self, direction: int) -> None:
+    def _call_change(self, direction: int) -> None:
         self.sgnl_change_frame.emit(direction)
 
-    def call_sldr_brightness(self, value: int) -> None:
-        self.sgnl_sldr_brightness.emit(value)
+    def _call_sldr_brightness(self, value: int) -> None:
+        self.sgnl_adjust_brightness.emit(value)
 
-    def call_sldr_contrast(self, value: int) -> None:
-        self.sgnl_sldr_contrast.emit(value)
+    def _call_sldr_contrast(self, value: int) -> None:
+        self.sgnl_adjust_contrast.emit(value)
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_play, self.btn_pause, self.btn_next, self.btn_prev,
-                   self.sldr_brightness, self.sldr_contrast]
+                   self._sldr_brightness, self._sldr_contrast]
         for btn in buttons:
             btn.setEnabled(enable)
 
@@ -70,7 +70,7 @@ class RightButtons(QWidget):
     sgnl_change_im_layer = pyqtSignal(int)
     sgnl_change_ann_layer = pyqtSignal(bool, int)
     sgnl_toggle_rois = pyqtSignal(bool)
-    sgnl_sldr_brush_size = pyqtSignal(int)
+    sgnl_adjust_brush_size = pyqtSignal(int)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(RightButtons, self).__init__(parent)
@@ -98,9 +98,9 @@ class RightButtons(QWidget):
         for btn in [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2]:
             btn.setCheckable(True)
 
-        self.btn_ann_0.clicked.connect(lambda checked, idx=0: self.call_ann(checked, idx))
-        self.btn_ann_1.clicked.connect(lambda checked, idx=1: self.call_ann(checked, idx))
-        self.btn_ann_2.clicked.connect(lambda checked, idx=2: self.call_ann(checked, idx))
+        self.btn_ann_0.clicked.connect(lambda checked, idx=0: self._call_change_ann_layer(checked, idx))
+        self.btn_ann_1.clicked.connect(lambda checked, idx=1: self._call_change_ann_layer(checked, idx))
+        self.btn_ann_2.clicked.connect(lambda checked, idx=2: self._call_change_ann_layer(checked, idx))
 
         # Image layers
         # Row 1, Column 0
@@ -114,11 +114,11 @@ class RightButtons(QWidget):
         for btn in [self.btn_raw_im, self.btn_bg_sub, self.btn_bg_im, self.btn_bm_im, self.btn_rois]:
             btn.setCheckable(True)
 
-        self.btn_raw_im.clicked.connect(lambda: self.call_btn(0))
-        self.btn_bg_im.clicked.connect(lambda: self.call_btn(1))
-        self.btn_bm_im.clicked.connect(lambda: self.call_btn(2))
-        self.btn_bg_sub.clicked.connect(lambda: self.call_btn(3))
-        self.btn_rois.toggled.connect(self.call_rois)
+        self.btn_raw_im.clicked.connect(lambda: self._call_change_im_layer(0))
+        self.btn_bg_im.clicked.connect(lambda: self._call_change_im_layer(1))
+        self.btn_bm_im.clicked.connect(lambda: self._call_change_im_layer(2))
+        self.btn_bg_sub.clicked.connect(lambda: self._call_change_im_layer(3))
+        self.btn_rois.toggled.connect(self._call_toggle_rois)
 
         self.btns_im_layers = [self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub]
 
@@ -143,10 +143,10 @@ class RightButtons(QWidget):
         layout_curr_brush.addWidget(lbl_curr_brush_txt)
         layout_curr_brush.addWidget(self.lbl_curr_brush_img)
 
-        self.sldr_brush_size = QSlider(Qt.Horizontal)
-        self.sldr_brush_size.setRange(1, 20)
-        self.sldr_brush_size.setValue(5)
-        self.sldr_brush_size.valueChanged.connect(self.call_sldr_brush_size)
+        self._sldr_brush_size = QSlider(Qt.Horizontal)
+        self._sldr_brush_size.setRange(1, 20)
+        self._sldr_brush_size.setValue(5)
+        self._sldr_brush_size.valueChanged.connect(self._call_adjust_brush_size)
 
         self.btn_paint = QPushButton('Paintbrush')
         self.btn_fill = QPushButton('Fill')
@@ -158,7 +158,7 @@ class RightButtons(QWidget):
 
         layout_paint_tools.addWidget(lbl_paint, 1)
         layout_paint_tools.addLayout(layout_curr_brush)
-        layout_paint_tools.addWidget(self.sldr_brush_size)
+        layout_paint_tools.addWidget(self._sldr_brush_size)
         layout_paint_tools.addWidget(self.btn_paint)
         layout_paint_tools.addWidget(self.btn_fill)
         layout_paint_tools.addWidget(self.btn_erase)
@@ -166,12 +166,12 @@ class RightButtons(QWidget):
 
         self.enable_buttons(False)
 
-    def call_btn(self, idx: int) -> None:
+    def _call_change_im_layer(self, idx: int) -> None:
         self.sgnl_change_im_layer.emit(idx)
         buttons = self.btns_im_layers
         self.uncheck_others(buttons, idx)
 
-    def call_ann(self, checked: bool, idx: int) -> None:
+    def _call_change_ann_layer(self, checked: bool, idx: int) -> None:
         self.sgnl_change_ann_layer.emit(checked, idx)
 
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2]
@@ -179,11 +179,11 @@ class RightButtons(QWidget):
             if i != idx:
                 buttons[i].setChecked(False)
 
-    def call_rois(self, checked: bool) -> None:
+    def _call_toggle_rois(self, checked: bool) -> None:
         self.sgnl_toggle_rois.emit(checked)
 
-    def call_sldr_brush_size(self, value: int) -> None:
-        self.sgnl_sldr_brush_size.emit(value)
+    def _call_adjust_brush_size(self, value: int) -> None:
+        self.sgnl_adjust_brush_size.emit(value)
 
     @staticmethod
     def uncheck_others(buttons: list, btn: int) -> None:
@@ -198,7 +198,7 @@ class RightButtons(QWidget):
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
                    self.btn_paint, self.btn_fill, self.btn_erase, self.btn_clear,
-                   self.sldr_brush_size]
+                   self._sldr_brush_size]
         for btn in selection:
             buttons[btn].setEnabled(enable)
 
@@ -228,8 +228,8 @@ class RightButtons(QWidget):
 class BottomRightButtons(QWidget):
     # We want check boxes for: bad frame, frame of interest
     # Maybe also for more than one fish in frame? Text box that takes a number?
-    sgnl_cb_bad_changed = pyqtSignal(int)
-    sgnl_cb_interest_changed = pyqtSignal(int)
+    sgnl_bad_frame = pyqtSignal(int)
+    sgnl_interesting_frame = pyqtSignal(int)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomRightButtons, self).__init__(parent)
@@ -241,16 +241,16 @@ class BottomRightButtons(QWidget):
         brb_layout.addWidget(self.cb_bad, 0, 0)
         brb_layout.addWidget(self.cb_interest, 1, 0)
 
-        self.cb_bad.stateChanged.connect(self.call_cb_bad)
-        self.cb_interest.stateChanged.connect(self.call_cb_interest)
+        self.cb_bad.stateChanged.connect(self._call_bad_frame)
+        self.cb_interest.stateChanged.connect(self._call_interesting_frame)
 
         self.enable_buttons(False)
 
-    def call_cb_bad(self, state: int) -> None:
-        self.sgnl_cb_bad_changed.emit(state)
+    def _call_bad_frame(self, state: int) -> None:
+        self.sgnl_bad_frame.emit(state)
 
-    def call_cb_interest(self, state: int) -> None:
-        self.sgnl_cb_interest_changed.emit(state)
+    def _call_interesting_frame(self, state: int) -> None:
+        self.sgnl_interesting_frame.emit(state)
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""

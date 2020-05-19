@@ -55,15 +55,15 @@ class MainWindow(QMainWindow):
 
         # Connect up button signals
         main_menu.sgnl_im_folder.connect(self.set_im_folder)
-        self.right_buttons.sgnl_change_im_layer.connect(self.change_layer)
+        self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
-        self.right_buttons.sgnl_sldr_brush_size.connect(self.adjust_brush_size)
+        self.right_buttons.sgnl_adjust_brush_size.connect(self.adjust_brush_size)
         self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
-        self.bottom_buttons.sgnl_sldr_brightness.connect(self.adjust_brightness)
-        self.bottom_buttons.sgnl_sldr_contrast.connect(self.adjust_contrast)
-        self.br_buttons.sgnl_cb_bad_changed.connect(self.bad_frame)
-        self.br_buttons.sgnl_cb_interest_changed.connect(self.interesting_frame)
+        self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
+        self.bottom_buttons.sgnl_adjust_contrast.connect(self.adjust_contrast)
+        self.br_buttons.sgnl_bad_frame.connect(self.bad_frame)
+        self.br_buttons.sgnl_interesting_frame.connect(self.interesting_frame)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -99,14 +99,14 @@ class MainWindow(QMainWindow):
     def set_im_folder(self, im_folder: ImageFolder) -> None:
         self.im_folder = im_folder
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
-        self.change_layer(0)
+        self.change_im_layer(0)
         self.right_buttons.enable_buttons(selection=range(8))
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
 
     @pyqtSlot(int)
-    def change_layer(self, im_idx: int) -> None:
+    def change_im_layer(self, im_idx: int) -> None:
         curr_frames = self.im_folder.curr_frames
         im = curr_frames[im_idx]
         self.curr_layer = im_idx
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
             self.im_folder.next_image()
         if direction < 0:
             self.im_folder.prev_image()
-        self.change_layer(self.curr_layer)
+        self.change_im_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
         self.load_annotations()
