@@ -75,25 +75,39 @@ class MainWindow(QMainWindow):
         self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
 
     def save_annotations(self) -> None:
-        canvases = []
+        canvases = [None] * len(self.annotation_canvases)
+        save: bool = False
+        i = 0
         for canvas in self.annotation_canvases:
             if canvas.is_used:  # Don't bother to save unless something has actually been drawn
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
                 canvas.pixmap().save(buffer, 'png')
                 buffer.close()
-                canvases.append(buffer)
+                canvases[i] = buffer
                 canvas.erase_all()
-        if canvases:  # If canvases == [] this will be False
+                save = True
+            i += 1
+        if save:
             self.saved_canvases[self.im_folder.framepos[0]] = canvases
 
     def load_annotations(self) -> None:
         k = self.im_folder.framepos[0]
+        # If the current frame has ANY annotations on it, on any layer...
         if self.saved_canvases[k]:
             for i in range(len(self.saved_canvases[k])):
-                buffer = self.saved_canvases[k][i].buffer()
-                self.annotation_canvases[i].pixmap().loadFromData(buffer)
+                # If this specific layer has an annotation on it, display that annotation
+                if self.saved_canvases[k][i]:
+                    buffer = self.saved_canvases[k][i].buffer()
+                    self.annotation_canvases[i].pixmap().loadFromData(buffer)
+                # Otherwise clear the layer so we aren't showing annotations from other frames
+                else:
+                    self.annotation_canvases[i].erase_all()
                 self.annotation_canvases[i].update()
+        # Clear all layers if this frame doesn't have any annotations
+        else:
+            for canvas in self.annotation_canvases:
+                canvas.erase_all()
 
     @pyqtSlot(ImageFolder)
     def set_im_folder(self, im_folder: ImageFolder) -> None:
