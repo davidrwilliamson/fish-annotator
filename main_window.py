@@ -1,4 +1,5 @@
 from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice
+from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
 from typing import List
 
@@ -25,6 +26,8 @@ class MainWindow(QMainWindow):
         self.lbl_frame = QLabel('\n')
         self.lbl_frame_no = QLabel('\n')
         self.lbl_frame_no.setAlignment(Qt.AlignRight)
+
+        self.scale_bar = ScaleBar(self.image_frame, 1)
 
         self.saved_canvases: List[QBuffer] = []
         self.annotation_canvases: List[PaintingCanvas] = []
@@ -191,3 +194,75 @@ class MainWindow(QMainWindow):
     @pyqtSlot(int)
     def interesting_frame(self, state: int) -> None:
         pass
+
+
+class ScaleBar(QLabel):
+    def __init__(self, parent: QWidget, scale: float) -> None:
+        super(ScaleBar, self).__init__(parent)
+
+        # Default scale of 1px ~ 1um, adjustable here
+        self.scale_factor = scale
+
+        self.w, self.h = 190, 50
+        self.setGeometry(parent.width() - self.w, parent.height() - self.h, self.w, self.h)
+        self.setMinimumSize(QSize(self.w, self.h))
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        self._set_canvas()
+        self._draw_bars()
+        self._draw_lables()
+
+    def _set_canvas(self) -> None:
+        canvas = QPixmap(self.w, self.h)
+        canvas.fill(QColor('transparent'))
+        # canvas.fill(QColor('red'))
+        self.setPixmap(canvas)
+
+    def _draw_bars(self) -> None:
+        painter = QPainter(self.pixmap())
+        painter.setPen(QPen(QColor('black'),  1, Qt.SolidLine))
+        painter.setBrush(QColor('white'))
+        # Mot filled
+        painter.drawRect(10, 25, 10, 10)
+        painter.drawRect(20, 15, 10, 10)
+        painter.drawRect(30, 25, 10, 10)
+        painter.drawRect(40, 15, 10, 10)
+        painter.drawRect(50, 25, 40, 10)
+        painter.drawRect(90, 15, 40, 10)
+        painter.drawRect(130, 25, 40, 10)
+
+        painter.setBrush(QColor('black'))
+        # Filled
+        painter.drawRect(10, 15, 10, 10)
+        painter.drawRect(20, 25, 10, 10)
+        painter.drawRect(30, 15, 10, 10)
+        painter.drawRect(40, 25, 10, 10)
+        painter.drawRect(50, 15, 40, 10)
+        painter.drawRect(90, 25, 40, 10)
+        painter.drawRect(130, 15, 40, 10)
+
+    def _draw_lables(self):
+        lab_0 = QLabel(self)
+        lab_0.setText('0')
+        lab_0.setAlignment(Qt.AlignCenter)
+        lab_0.setGeometry(-5, 0, 30, 10)
+
+        lab_25 = QLabel(self)
+        lab_25.setText('{}'.format(40 * self.scale_factor))
+        lab_25.setAlignment(Qt.AlignCenter)
+        lab_25.setGeometry(35, 0, 30, 10)
+
+        lab_50 = QLabel(self)
+        lab_50.setText('{}'.format(80 * self.scale_factor))
+        lab_50.setAlignment(Qt.AlignCenter)
+        lab_50.setGeometry(75, 0, 30, 10)
+
+        lab_100 = QLabel(self)
+        lab_100.setText('{}'.format(160 * self.scale_factor))
+        lab_100.setAlignment(Qt.AlignCenter)
+        lab_100.setGeometry(155, 0, 30, 10)
+
+        lab_um = QLabel(self)
+        lab_um.setText('micrometres')
+        lab_um.setAlignment(Qt.AlignCenter)
+        lab_um.setGeometry(45, 40, 90, 10)
