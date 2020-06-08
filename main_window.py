@@ -205,6 +205,15 @@ class MainWindow(QMainWindow):
         else:
             self.scale_bar.setVisible(True)
 
+    @pyqtSlot(int)
+    def export_menu(self, option: IntEnum) -> None:
+        if option == ExportMenu.PREVIEW_ROIS:
+            self.main_menu.preview_rois(self.im_folder)
+        elif option == ExportMenu.EXPORT_ROIS:
+            self.main_menu.export_rois(self.im_folder)
+        elif option == ExportMenu.EXPORT_MONTAGE:
+            self.main_menu.export_montage(self.im_folder)
+
 
 class ScaleBar(QLabel):
     def __init__(self, parent: QWidget, scale: float) -> None:

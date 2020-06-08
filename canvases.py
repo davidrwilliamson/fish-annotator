@@ -35,6 +35,7 @@ class RoIsCanvas(MainCanvas):
         painter.setPen(p)
         for roi in rois:
             roi_int = list(map(int, roi.split(',')))
+            # RoI given as distances from top-left corner (0, 0): [left, top, right, bottom]
             roi_qrect = QRect(roi_int[0] / 2, roi_int[1] / 2,
                               (roi_int[2] - roi_int[0]) / 2, (roi_int[3] - roi_int[1]) / 2)
             painter.drawRect(roi_qrect)
