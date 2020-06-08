@@ -245,6 +245,8 @@ class BottomRightButtons(QWidget):
 
         self.cb_bad = QCheckBox('Bad frame')
         self.cb_interest = QCheckBox('Interesting frame')
+        self.cb_bad.setTristate(False)
+        self.cb_interest.setTristate(False)
 
         brb_layout.addWidget(self.cb_bad, 0, 0)
         brb_layout.addWidget(self.cb_interest, 1, 0)

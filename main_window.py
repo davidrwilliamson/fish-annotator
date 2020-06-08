@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
 
         # Connect up button signals
         self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
-        self.main_menu.sgnl_export_menu.connect(self.export_menu)
+        # self.main_menu.sgnl_export_menu.connect(self.export_menu)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
@@ -170,6 +170,10 @@ class MainWindow(QMainWindow):
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
         self.load_annotations()
+        if self.im_folder.curr_frames[0] in self.im_folder._interesting_frames:
+            self.br_buttons.cb_interest.setChecked(True)
+        else:
+            self.br_buttons.cb_interest.setChecked(False)
 
     @pyqtSlot(int)
     def adjust_brightness(self, value: int) -> None:
@@ -187,16 +191,14 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(int)
     def bad_frame(self, state: int) -> None:
-        if state == 0:
-            # unchecked, mark frame as not bad
-            pass
-        else:
-            # checked, mark frame as bad
-            pass
+        self.im_folder.toggle_bad_frame(state)
+        # A bad frame cannot be an interesting frame
+        if state == 1:
+            self.interesting_frame(0)
 
     @pyqtSlot(int)
     def interesting_frame(self, state: int) -> None:
-        pass
+        self.im_folder.toggle_interesting_frame(state)
 
     @pyqtSlot(int)
     def toggle_scale_bar(self, state: int) -> None:

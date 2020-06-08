@@ -11,17 +11,26 @@ class ImageFolder:
     def __init__(self, folder: str) -> None:
         self.folder = folder
 
-        self._all_files = []
-        self._im_files = []
-        self._bg_files = []
-        self._bm_files = []
-        self._rois = []
+        self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc'])
+        # self._im_files = []
 
-        self._curr_frame_no = 0
-        self._no_of_frames = 0
+        self._interesting_frames = []
+        self._bad_frames = []
+        self._rois = [None] * len(self._all_files)
+
+        self._num_frames = len(self._all_files)
 
         self._list_image_files()
-        self._list_rois()
+        # self._list_rois()
+
+        if self._interesting_frames:
+            self._curr_frame_no = self._interesting_frames[0]
+            self._show_all = False
+            self._show_interesting = True
+        else:
+            self._curr_frame_no = 0
+            self._show_all = True
+            self._show_interesting = False
 
     def _load_rois_file(self) -> TextIO:
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
@@ -36,59 +45,62 @@ class ImageFolder:
     def _list_image_files(self) -> None:
         rois_file = self._load_rois_file()
 
-        self._all_files = [file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc']
-        im_files = []
+        # im_files = []
         for line in rois_file.readlines():
             f = re.match('^filename:', line)
             if f:
                 fn = line.split(': ')[1].strip()
-                im_files.append(fn)
+                self._interesting_frames.append(self._all_files.index(fn))
+                # im_files.append(fn)
 
-        self._im_files = im_files
-        self._no_of_frames = len(im_files)
-        self._bg_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/backgrounds/'))]
-        self._bm_files = [file for file in os.listdir(os.path.join(self.folder, 'analysis/binary_masks/'))]
+        # self._im_files = im_files
 
-    def _list_rois(self) -> None:
-        rois_file = self._load_rois_file()
-
-        roi = []
-        for line in rois_file.readlines():
-            r = re.match('^roi:', line)
-            f = re.match('^filename:', line)
-            if r:
-                roi.append(line.split(': ')[1].strip())
-            elif f:
-                if roi:
-                    self._rois.append(roi)
-                    roi = []
-            else:
-                print('Unexpected line in RoIs file.')
-        self._rois.append(roi)
+    # def _list_rois(self) -> None:
+    #     rois_file = self._load_rois_file()
+    #
+    #     roi = []
+    #     for line in rois_file.readlines():
+    #         r = re.match('^roi:', line)
+    #         f = re.match('^filename:', line)
+    #         if r:
+    #             roi.append(line.split(': ')[1].strip())
+    #         elif f:
+    #             fn = line.split(': ')[1].strip()
+    #             if roi:
+    #                 self._rois[self._all_files.index(fn)] = roi
+    #                 roi = []
+    #         else:
+    #             print('Unexpected line in RoIs file.')
+    #     self._rois[self._all_files.index(fn)] = roi
 
     @property
     def curr_files(self) -> Tuple[str, str, str]:
-        im_raw = os.path.join(self.folder, self._im_files[self._curr_frame_no])
+        im_raw = os.path.join(self.folder, self._all_files[self._curr_frame_no])
         im_bg = os.path.join(self.folder, 'analysis/backgrounds',
-                             '{}.bg.npy'.format(self._im_files[self._curr_frame_no]))
+                             '{}.bg.npy'.format(self._all_files[self._curr_frame_no]))
         im_bm = os.path.join(self.folder, 'analysis/binary_masks',
-                             '{}.mask.npy'.format(self._im_files[self._curr_frame_no]))
+                             '{}.mask.npy'.format(self._all_files[self._curr_frame_no]))
         return im_raw, im_bg, im_bm
 
     @property
     def curr_frames(self) -> Tuple[QPixmap, QPixmap, QPixmap, QPixmap]:
         ims = self.curr_files
         im_raw = load_image(ims[0], 'raw')
-        im_bg = load_image(ims[1], 'bg')
-        im_bm = load_image(ims[2], 'bm')
-        bg_sub = bg_subtract(ims[0], ims[1])
+        if self._curr_frame_no in self._interesting_frames:
+            im_bg = load_image(ims[1], 'bg')
+            im_bm = load_image(ims[2], 'bm')
+            bg_sub = bg_subtract(ims[0], ims[1])
+        else:
+            im_bg = None
+            im_bm = None
+            bg_sub = None
 
         return im_raw, im_bg, im_bm, bg_sub
 
     @property
     def framepos(self) -> Tuple[int, str]:
         cf_no = self._curr_frame_no
-        cf_fn = self._im_files[self._curr_frame_no]
+        cf_fn = self._all_files[self._curr_frame_no]
 
         return cf_no, cf_fn
 
@@ -98,17 +110,47 @@ class ImageFolder:
 
     @property
     def num_frames(self) -> int:
-        return self._no_of_frames
+        return self._num_frames
+
+    @property
+    def bad_frames(self) -> list:
+        return self._bad_frames
 
     def go_to_frame(self, frame: int):
         if (frame >= 0) and (frame <= self.num_frames):
             self._curr_frame_no = frame
 
     def next_frame(self) -> None:
-        self._curr_frame_no = (self._curr_frame_no + 1) % self.num_frames
+        if self._show_all:
+            self._curr_frame_no = (self._curr_frame_no + 1) % self.num_frames
+        elif self._show_interesting:
+            int_idx = self._interesting_frames.index(self._curr_frame_no)
+            int_idx = (int_idx + 1) % len(self._interesting_frames)
+            self._curr_frame_no = self._interesting_frames[int_idx]
 
     def prev_frame(self) -> None:
-        self._curr_frame_no = (self._curr_frame_no - 1) % self.num_frames
+        if self._show_all:
+            self._curr_frame_no = (self._curr_frame_no - 1) % self.num_frames
+        elif self._show_interesting:
+            int_idx = self._interesting_frames.index(self._curr_frame_no)
+            int_idx = (int_idx - 1) % len(self._interesting_frames)
+            self._curr_frame_no = self._interesting_frames[int_idx]
+
+    def toggle_bad_frame(self, state: int):
+        print ('State changed to {}'.format(state))
+        if state == 0:
+            self._bad_frames.remove(self.framepos[0])
+        elif state == 1:
+            self._bad_frames.append(self.framepos[0])
+
+    def toggle_interesting_frame(self, state: int):
+        print('State changed to {}'.format(state))
+        # if state == 0:
+        #     self._interesting_frames.remove(self.framepos[0])
+        # elif state == 1:
+        #     self._interesting_frames.append(self.framepos[0])
+        # else:
+        #     print ('{}, {}'.format(state, self.framepos[0]))
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:
@@ -137,3 +179,6 @@ def bg_subtract(im_raw: str, im_bg: str) -> QPixmap:
     im = QPixmap.fromImage(im)
 
     return im
+
+def mask_list(lst, mask):
+    return [a for a, b in zip(lst, mask) if b]
