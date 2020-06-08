@@ -7,10 +7,15 @@ class BottomButtons(QWidget):
     sgnl_change_frame = pyqtSignal(int)
     sgnl_adjust_brightness = pyqtSignal(int)
     sgnl_adjust_contrast = pyqtSignal(int)
+    sgnl_toggle_scale_bar = pyqtSignal(int)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomButtons, self).__init__(parent)
         bb_layout = QVBoxLayout(self)
+
+        self.cb_scale_bar = QCheckBox('Show scale bar')
+        bb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
+        self.cb_scale_bar.stateChanged.connect(self._call_toggle_scale_bar)
 
         self.btn_play = QPushButton('Play')
         self.btn_pause = QPushButton('Pause')
@@ -57,6 +62,9 @@ class BottomButtons(QWidget):
 
     def _call_sldr_contrast(self, value: int) -> None:
         self.sgnl_adjust_contrast.emit(value)
+
+    def _call_toggle_scale_bar(self, state: int) -> None:
+        self.sgnl_toggle_scale_bar.emit(state)
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""

@@ -28,6 +28,7 @@ class MainWindow(QMainWindow):
         self.lbl_frame_no.setAlignment(Qt.AlignRight)
 
         self.scale_bar = ScaleBar(self.image_frame, 1)
+        self.scale_bar.setVisible(False)
 
         self.saved_canvases: List[QBuffer] = []
         self.annotation_canvases: List[PaintingCanvas] = []
@@ -65,6 +66,7 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
         self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
         self.bottom_buttons.sgnl_adjust_contrast.connect(self.adjust_contrast)
+        self.bottom_buttons.sgnl_toggle_scale_bar.connect(self.toggle_scale_bar)
         self.br_buttons.sgnl_bad_frame.connect(self.bad_frame)
         self.br_buttons.sgnl_interesting_frame.connect(self.interesting_frame)
 
@@ -195,6 +197,13 @@ class MainWindow(QMainWindow):
     def interesting_frame(self, state: int) -> None:
         pass
 
+    @pyqtSlot(int)
+    def toggle_scale_bar(self, state: int) -> None:
+        if state == 0:
+            self.scale_bar.setVisible(False)
+        else:
+            self.scale_bar.setVisible(True)
+
 
 class ScaleBar(QLabel):
     def __init__(self, parent: QWidget, scale: float) -> None:
@@ -241,7 +250,7 @@ class ScaleBar(QLabel):
         painter.drawRect(90, 25, 40, 10)
         painter.drawRect(130, 15, 40, 10)
 
-    def _draw_lables(self):
+    def _draw_lables(self) -> None:
         lab_0 = QLabel(self)
         lab_0.setText('0')
         lab_0.setAlignment(Qt.AlignCenter)
