@@ -67,10 +67,6 @@ class ImageFolder:
         self._rois.append(roi)
 
     @property
-    def num_images(self) -> int:
-        return len(self._im_files)
-
-    @property
     def curr_files(self) -> Tuple[str, str, str]:
         im_raw = os.path.join(self.folder, self._im_files[self._curr_frame_no])
         im_bg = os.path.join(self.folder, 'analysis/backgrounds',
@@ -104,11 +100,15 @@ class ImageFolder:
     def num_frames(self) -> int:
         return self._no_of_frames
 
+    def go_to_frame(self, frame: int):
+        if (frame >= 0) and (frame <= self.num_frames):
+            self._curr_frame_no = frame
+
     def next_image(self) -> None:
-        self._curr_frame_no = (self._curr_frame_no + 1) % self.num_images
+        self._curr_frame_no = (self._curr_frame_no + 1) % self.num_frames
 
     def prev_image(self) -> None:
-        self._curr_frame_no = (self._curr_frame_no - 1) % self.num_images
+        self._curr_frame_no = (self._curr_frame_no - 1) % self.num_frames
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:
