@@ -119,38 +119,44 @@ class ImageFolder:
     def go_to_frame(self, frame: int):
         if (frame >= 0) and (frame <= self.num_frames):
             self._curr_frame_no = frame
+        else:
+            raise
 
     def next_frame(self) -> None:
         if self._show_all:
-            self._curr_frame_no = (self._curr_frame_no + 1) % self.num_frames
+            self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
         elif self._show_interesting:
             int_idx = self._interesting_frames.index(self._curr_frame_no)
             int_idx = (int_idx + 1) % len(self._interesting_frames)
-            self._curr_frame_no = self._interesting_frames[int_idx]
+            self.go_to_frame(self._interesting_frames[int_idx])
 
     def prev_frame(self) -> None:
         if self._show_all:
-            self._curr_frame_no = (self._curr_frame_no - 1) % self.num_frames
+            self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
         elif self._show_interesting:
             int_idx = self._interesting_frames.index(self._curr_frame_no)
             int_idx = (int_idx - 1) % len(self._interesting_frames)
-            self._curr_frame_no = self._interesting_frames[int_idx]
+            self.go_to_frame(self._interesting_frames[int_idx])
 
-    def toggle_bad_frame(self, state: int):
-        print ('State changed to {}'.format(state))
-        if state == 0:
-            self._bad_frames.remove(self.framepos[0])
-        elif state == 1:
-            self._bad_frames.append(self.framepos[0])
+    def toggle_bad_frame(self, checked: bool):
+        if checked:
+            if not self.framepos[0] in self._bad_frames:
+                self._bad_frames.append(self._curr_frame_no)
+        else:
+            if self.framepos[0] in self._bad_frames:
+                self._bad_frames.remove(self._curr_frame_no)
 
-    def toggle_interesting_frame(self, state: int):
-        print('State changed to {}'.format(state))
-        # if state == 0:
-        #     self._interesting_frames.remove(self.framepos[0])
-        # elif state == 1:
-        #     self._interesting_frames.append(self.framepos[0])
-        # else:
-        #     print ('{}, {}'.format(state, self.framepos[0]))
+    def toggle_interesting_frame(self, checked: bool):
+        if checked:
+            if not self.framepos[0] in self._interesting_frames:
+                self._interesting_frames.append(self._curr_frame_no)
+        else:
+            if self.framepos[0] in self._interesting_frames:
+                # This removes the current frame and points us at the "next" one in the list after deletion
+                curr_idx = self._interesting_frames.index(self._curr_frame_no)
+                next_idx = curr_idx % (len(self._interesting_frames) - 1)
+                self._interesting_frames.remove(self._curr_frame_no)
+                self.go_to_frame(self._interesting_frames[next_idx])
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:

@@ -7,7 +7,7 @@ class BottomButtons(QWidget):
     sgnl_change_frame = pyqtSignal(int)
     sgnl_adjust_brightness = pyqtSignal(int)
     sgnl_adjust_contrast = pyqtSignal(int)
-    sgnl_toggle_scale_bar = pyqtSignal(int)
+    sgnl_toggle_scale_bar = pyqtSignal(bool)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomButtons, self).__init__(parent)
@@ -15,7 +15,8 @@ class BottomButtons(QWidget):
 
         self.cb_scale_bar = QCheckBox('Show scale bar')
         bb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
-        self.cb_scale_bar.stateChanged.connect(self._call_toggle_scale_bar)
+        self.cb_scale_bar.toggled.connect(self._call_toggle_scale_bar)
+        self.cb_scale_bar.setChecked(False)
 
         self.btn_play = QPushButton('Play')
         self.btn_pause = QPushButton('Pause')
@@ -63,8 +64,8 @@ class BottomButtons(QWidget):
     def _call_sldr_contrast(self, value: int) -> None:
         self.sgnl_adjust_contrast.emit(value)
 
-    def _call_toggle_scale_bar(self, state: int) -> None:
-        self.sgnl_toggle_scale_bar.emit(state)
+    def _call_toggle_scale_bar(self, checked: bool) -> None:
+        self.sgnl_toggle_scale_bar.emit(checked)
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
@@ -236,8 +237,8 @@ class RightButtons(QWidget):
 class BottomRightButtons(QWidget):
     # We want check boxes for: bad frame, frame of interest
     # Maybe also for more than one fish in frame? Text box that takes a number?
-    sgnl_bad_frame = pyqtSignal(int)
-    sgnl_interesting_frame = pyqtSignal(int)
+    sgnl_toggle_bad_frame = pyqtSignal(bool)
+    sgnl_toggle_interesting_frame = pyqtSignal(bool)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomRightButtons, self).__init__(parent)
@@ -251,16 +252,16 @@ class BottomRightButtons(QWidget):
         brb_layout.addWidget(self.cb_bad, 0, 0)
         brb_layout.addWidget(self.cb_interest, 1, 0)
 
-        self.cb_bad.stateChanged.connect(self._call_bad_frame)
-        self.cb_interest.stateChanged.connect(self._call_interesting_frame)
+        self.cb_bad.toggled.connect(self._call_toggle_bad_frame)
+        self.cb_interest.toggled.connect(self._call_toggle_interesting_frame)
 
         self.enable_buttons(False)
 
-    def _call_bad_frame(self, state: int) -> None:
-        self.sgnl_bad_frame.emit(state)
+    def _call_toggle_bad_frame(self, checked: bool) -> None:
+        self.sgnl_toggle_bad_frame.emit(checked)
 
-    def _call_interesting_frame(self, state: int) -> None:
-        self.sgnl_interesting_frame.emit(state)
+    def _call_toggle_interesting_frame(self, checked: bool) -> None:
+        self.sgnl_toggle_interesting_frame.emit(checked)
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""

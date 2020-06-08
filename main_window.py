@@ -68,8 +68,8 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
         self.bottom_buttons.sgnl_adjust_contrast.connect(self.adjust_contrast)
         self.bottom_buttons.sgnl_toggle_scale_bar.connect(self.toggle_scale_bar)
-        self.br_buttons.sgnl_bad_frame.connect(self.bad_frame)
-        self.br_buttons.sgnl_interesting_frame.connect(self.interesting_frame)
+        self.br_buttons.sgnl_toggle_bad_frame.connect(self.bad_frame)
+        self.br_buttons.sgnl_toggle_interesting_frame.connect(self.interesting_frame)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -120,6 +120,7 @@ class MainWindow(QMainWindow):
         self.im_folder = im_folder
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.change_im_layer(0)
+        self.change_frame(0)
         self.right_buttons.enable_buttons(selection=range(8))
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
@@ -170,10 +171,17 @@ class MainWindow(QMainWindow):
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
         self.load_annotations()
-        if self.im_folder.curr_frames[0] in self.im_folder._interesting_frames:
+
+        # This is a gross hack that should be fixed/removed,
+        # but I want to make sure that boxes are checked correctly when a frame is loaded
+        if self.im_folder.framepos[0] in self.im_folder._interesting_frames:
             self.br_buttons.cb_interest.setChecked(True)
         else:
             self.br_buttons.cb_interest.setChecked(False)
+        if self.im_folder.framepos[0] in self.im_folder._bad_frames:
+            self.br_buttons.cb_bad.setChecked(True)
+        else:
+            self.br_buttons.cb_bad.setChecked(False)
 
     @pyqtSlot(int)
     def adjust_brightness(self, value: int) -> None:
@@ -189,23 +197,28 @@ class MainWindow(QMainWindow):
             canvas.pen_size = value
         self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[self.curr_ann_layer], True)
 
-    @pyqtSlot(int)
-    def bad_frame(self, state: int) -> None:
-        self.im_folder.toggle_bad_frame(state)
+    @pyqtSlot(bool)
+    def bad_frame(self, checked: bool) -> None:
+        self.im_folder.toggle_bad_frame(checked)
         # A bad frame cannot be an interesting frame
-        if state == 1:
-            self.interesting_frame(0)
+        if checked:
+            self.interesting_frame(False)
+        self.change_frame(0)
 
-    @pyqtSlot(int)
-    def interesting_frame(self, state: int) -> None:
-        self.im_folder.toggle_interesting_frame(state)
+    @pyqtSlot(bool)
+    def interesting_frame(self, checked: bool) -> None:
+        self.im_folder.toggle_interesting_frame(checked)
+        # An interesting frame cannot be a bad frame
+        if checked:
+            self.bad_frame(False)
+        self.change_frame(0)
 
-    @pyqtSlot(int)
-    def toggle_scale_bar(self, state: int) -> None:
-        if state == 0:
-            self.scale_bar.setVisible(False)
-        else:
+    @pyqtSlot(bool)
+    def toggle_scale_bar(self, checked: bool) -> None:
+        if checked:
             self.scale_bar.setVisible(True)
+        else:
+            self.scale_bar.setVisible(False)
 
 
 class ScaleBar(QLabel):
