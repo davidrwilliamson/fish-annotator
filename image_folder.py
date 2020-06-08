@@ -104,10 +104,10 @@ class ImageFolder:
         if (frame >= 0) and (frame <= self.num_frames):
             self._curr_frame_no = frame
 
-    def next_image(self) -> None:
+    def next_frame(self) -> None:
         self._curr_frame_no = (self._curr_frame_no + 1) % self.num_frames
 
-    def prev_image(self) -> None:
+    def prev_frame(self) -> None:
         self._curr_frame_no = (self._curr_frame_no - 1) % self.num_frames
 
 

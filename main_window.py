@@ -18,8 +18,8 @@ class MainWindow(QMainWindow):
         self.draw_rois: bool = False
 
         # Menu bar
-        main_menu = MainMenu(self)
-        self.setMenuWidget(main_menu)
+        self.main_menu = MainMenu(self)
+        self.setMenuWidget(self.main_menu)
 
         self.image_frame = ImageFrame(self)
         self.rois_canvas = RoIsCanvas(self)
@@ -58,7 +58,8 @@ class MainWindow(QMainWindow):
         grid_layout.addWidget(self.br_buttons, 2, 1)
 
         # Connect up button signals
-        main_menu.sgnl_im_folder.connect(self.set_im_folder)
+        self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
+        self.main_menu.sgnl_export_menu.connect(self.export_menu)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
@@ -162,9 +163,9 @@ class MainWindow(QMainWindow):
     def change_frame(self, direction: int) -> None:
         self.save_annotations()
         if direction > 0:
-            self.im_folder.next_image()
+            self.im_folder.next_frame()
         if direction < 0:
-            self.im_folder.prev_image()
+            self.im_folder.prev_frame()
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
