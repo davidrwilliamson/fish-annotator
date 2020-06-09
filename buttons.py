@@ -278,6 +278,8 @@ class BottomRightButtons(QWidget):
 
 
 class LeftButtons(QWidget):
+    # TODO: Add markers showing which layers exist for the current frame
+    # TODO: Add counters giving how many frames have annotations
     sgnl_toggle_bad_frames = pyqtSignal(bool)
     sgnl_toggle_interesting_frames = pyqtSignal(bool)
     sgnl_toggle_other_frames = pyqtSignal(bool)
@@ -286,6 +288,10 @@ class LeftButtons(QWidget):
         super(LeftButtons, self).__init__(parent)
         lb_layout = QVBoxLayout(self)
 
+        self.lbl_frames = QLabel('\n')
+        self.lbl_interesting_frames = QLabel('\n')
+        self.lbl_bad_frames = QLabel('\n')
+
         self.cb_bad = QCheckBox('Show bad frames')
         self.cb_interest = QCheckBox('Show interesting frames')
         self.cb_other = QCheckBox('Show other frames')
@@ -293,6 +299,10 @@ class LeftButtons(QWidget):
         self.cb_bad.setTristate(False)
         self.cb_interest.setTristate(False)
         self.cb_other.setTristate(False)
+
+        lb_layout.addWidget(self.lbl_frames)
+        lb_layout.addWidget(self.lbl_interesting_frames)
+        lb_layout.addWidget(self.lbl_bad_frames)
 
         lb_layout.addWidget(self.cb_bad)
         lb_layout.addWidget(self.cb_interest)
@@ -309,3 +319,8 @@ class LeftButtons(QWidget):
             self.sgnl_toggle_interesting_frames.emit(checked)
         if option == FrameToggle.OTHER:
             self.sgnl_toggle_other_frames.emit(checked)
+
+    def update_labels(self, num_frames, cf_no, i_f, b_f):
+        self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
+        self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
+        self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))

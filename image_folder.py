@@ -12,8 +12,6 @@ class ImageFolder:
         self.folder = folder
 
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc'])
-        # self._im_files = []
-
         self._interesting_frames = []
         self._bad_frames = []
         self._rois = [None] * len(self._all_files)
@@ -50,15 +48,11 @@ class ImageFolder:
     def _list_image_files(self) -> None:
         rois_file = self._load_rois_file()
 
-        # im_files = []
         for line in rois_file.readlines():
             f = re.match('^filename:', line)
             if f:
                 fn = line.split(': ')[1].strip()
                 self._interesting_frames.append(self._all_files.index(fn))
-                # im_files.append(fn)
-
-        # self._im_files = im_files
 
     def _list_rois(self) -> None:
         rois_file = self._load_rois_file()

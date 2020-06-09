@@ -21,11 +21,12 @@ class MainWindow(QMainWindow):
         self.main_menu = MainMenu(self)
         self.setMenuWidget(self.main_menu)
 
+        # TODO: Add a border around the image, even when it isn't visible
         self.image_frame = ImageFrame(self)
         self.rois_canvas = RoIsCanvas(self)
         self.lbl_frame = QLabel('\n')
-        self.lbl_frame_no = QLabel('\n')
-        self.lbl_frame_no.setAlignment(Qt.AlignRight)
+        # self.lbl_frame_no = QLabel('\n')
+        # self.lbl_frame_no.setAlignment(Qt.AlignRight)
 
         self.scale_bar = ScaleBar(self.image_frame, 1)
         self.scale_bar.setVisible(False)
@@ -43,7 +44,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(placeholder)
         grid_layout = QGridLayout(placeholder)
         grid_layout.addWidget(self.lbl_frame, 0, 1)
-        grid_layout.addWidget(self.lbl_frame_no, 0, 1)
+        # grid_layout.addWidget(self.lbl_frame_no, 0, 1)
         grid_layout.addWidget(self.image_frame, 1, 1)
         grid_layout.addWidget(self.rois_canvas, 1, 1)
         for canvas in self.annotation_canvases:
@@ -83,7 +84,12 @@ class MainWindow(QMainWindow):
         cf_no, cf_fn = self.im_folder.framepos
         num_frames = self.im_folder.num_frames
         self.lbl_frame.setText('Folder:  {}\nFile:      {}'.format(folder, cf_fn))
-        self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
+        # self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
+
+        # TODO: Expose non-protected properties in ImageFolder for this, and/or find a nicer way to update these labels
+        i_f = len(self.im_folder._interesting_frames)
+        b_f = len(self.im_folder._bad_frames)
+        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f)
 
     def save_annotations(self) -> None:
         canvases = [None] * len(self.annotation_canvases)
