@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QPixmap, QPainter
 from PyQt5.QtWidgets import QCheckBox, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 
+
 class FrameToggle(IntEnum):
     BAD = 0
     INTERESTING = 1
@@ -301,7 +302,7 @@ class LeftButtons(QWidget):
         self.cb_interest.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.INTERESTING))
         self.cb_other.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.OTHER))
 
-    def _call_toggled(self, checked: bool, option: IntEnum):
+    def _call_toggled(self, checked: bool, option: IntEnum) -> None:
         if option == FrameToggle.BAD:
             self.sgnl_toggle_bad_frames.emit(checked)
         if option == FrameToggle.INTERESTING:

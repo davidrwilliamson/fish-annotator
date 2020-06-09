@@ -124,7 +124,7 @@ class ImageFolder:
     def bad_frames(self) -> list:
         return self._bad_frames
 
-    def go_to_frame(self, frame: int):
+    def go_to_frame(self, frame: int) -> None:
         if (frame >= 0) and (frame <= self.num_frames):
             self._curr_frame_no = frame
         else:
@@ -146,7 +146,7 @@ class ImageFolder:
                 self._intf_idx = (self._intf_idx - 1) % len(self._interesting_frames)
             self.go_to_frame(self._interesting_frames[self._intf_idx])
 
-    def toggle_bad_frame(self, checked: bool):
+    def toggle_bad_frame(self, checked: bool) -> None:
         if checked:
             if self._curr_frame_no not in self._bad_frames:
                 self._bad_frames.append(self._curr_frame_no)
@@ -155,7 +155,7 @@ class ImageFolder:
             if self._curr_frame_no in self._bad_frames:
                 self._bad_frames.remove(self._curr_frame_no)
 
-    def toggle_interesting_frame(self, checked: bool):
+    def toggle_interesting_frame(self, checked: bool) -> None:
         if checked:
             if self._curr_frame_no not in self._interesting_frames:
                 self._interesting_frames.append(self._curr_frame_no)

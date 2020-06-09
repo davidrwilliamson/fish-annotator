@@ -230,17 +230,17 @@ class MainWindow(QMainWindow):
             self.scale_bar.setVisible(False)
 
     @pyqtSlot(bool)
-    def show_bad_frames(self, checked: bool):
+    def show_bad_frames(self, checked: bool) -> None:
         pass
         # print ('Show bad frames: {}'.format(checked))
 
     @pyqtSlot(bool)
-    def show_interesting_frames(self, checked: bool):
+    def show_interesting_frames(self, checked: bool) -> None:
         pass
         # print ('Show intersting frames: {}'.format(checked))
 
     @pyqtSlot(bool)
-    def show_other_frames(self, checked: bool):
+    def show_other_frames(self, checked: bool) -> None:
         # print ('Show other frames: {}'.format(checked))
         self.im_folder._show_other = checked
         self.im_folder._show_interesting = not checked
