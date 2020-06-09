@@ -1,6 +1,12 @@
+from enum import IntEnum
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QPixmap, QPainter
 from PyQt5.QtWidgets import QCheckBox, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
+
+class FrameToggle(IntEnum):
+    BAD = 0
+    INTERESTING = 1
+    OTHER = 2
 
 
 class BottomButtons(QWidget):
@@ -268,3 +274,37 @@ class BottomRightButtons(QWidget):
         buttons = [self.cb_bad, self.cb_interest]
         for btn in buttons:
             btn.setEnabled(enable)
+
+
+class LeftButtons(QWidget):
+    sgnl_toggle_bad_frames = pyqtSignal(bool)
+    sgnl_toggle_interesting_frames = pyqtSignal(bool)
+    sgnl_toggle_other_frames = pyqtSignal(bool)
+
+    def __init__(self, parent: QWidget = None) -> None:
+        super(LeftButtons, self).__init__(parent)
+        lb_layout = QVBoxLayout(self)
+
+        self.cb_bad = QCheckBox('Show bad frames')
+        self.cb_interest = QCheckBox('Show interesting frames')
+        self.cb_other = QCheckBox('Show other frames')
+
+        self.cb_bad.setTristate(False)
+        self.cb_interest.setTristate(False)
+        self.cb_other.setTristate(False)
+
+        lb_layout.addWidget(self.cb_bad)
+        lb_layout.addWidget(self.cb_interest)
+        lb_layout.addWidget(self.cb_other)
+
+        self.cb_bad.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.BAD))
+        self.cb_interest.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.INTERESTING))
+        self.cb_other.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.OTHER))
+
+    def _call_toggled(self, checked: bool, option: IntEnum):
+        if option == FrameToggle.BAD:
+            self.sgnl_toggle_bad_frames.emit(checked)
+        if option == FrameToggle.INTERESTING:
+            self.sgnl_toggle_interesting_frames.emit(checked)
+        if option == FrameToggle.OTHER:
+            self.sgnl_toggle_other_frames.emit(checked)

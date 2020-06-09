@@ -42,20 +42,22 @@ class MainWindow(QMainWindow):
         placeholder = QWidget()
         self.setCentralWidget(placeholder)
         grid_layout = QGridLayout(placeholder)
-        grid_layout.addWidget(self.lbl_frame, 0, 0)
-        grid_layout.addWidget(self.lbl_frame_no, 0, 0)
-        grid_layout.addWidget(self.image_frame, 1, 0)
-        grid_layout.addWidget(self.rois_canvas, 1, 0)
+        grid_layout.addWidget(self.lbl_frame, 0, 1)
+        grid_layout.addWidget(self.lbl_frame_no, 0, 1)
+        grid_layout.addWidget(self.image_frame, 1, 1)
+        grid_layout.addWidget(self.rois_canvas, 1, 1)
         for canvas in self.annotation_canvases:
-            grid_layout.addWidget(canvas, 1, 0)
+            grid_layout.addWidget(canvas, 1, 1)
 
         # Add various sets of buttons
         self.bottom_buttons = BottomButtons()
-        grid_layout.addWidget(self.bottom_buttons, 2, 0)
+        grid_layout.addWidget(self.bottom_buttons, 2, 1)
         self.right_buttons = RightButtons()
-        grid_layout.addWidget(self.right_buttons, 1, 1)
+        grid_layout.addWidget(self.right_buttons, 1, 2)
         self.br_buttons = BottomRightButtons()
-        grid_layout.addWidget(self.br_buttons, 2, 1)
+        grid_layout.addWidget(self.br_buttons, 2, 2)
+        self.left_buttons = LeftButtons()
+        grid_layout.addWidget(self.left_buttons, 1, 0)
 
         # Connect up button signals
         self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
@@ -68,8 +70,11 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
         self.bottom_buttons.sgnl_adjust_contrast.connect(self.adjust_contrast)
         self.bottom_buttons.sgnl_toggle_scale_bar.connect(self.toggle_scale_bar)
-        self.br_buttons.sgnl_toggle_bad_frame.connect(self.bad_frame)
-        self.br_buttons.sgnl_toggle_interesting_frame.connect(self.interesting_frame)
+        self.br_buttons.sgnl_toggle_bad_frame.connect(self.toggle_bad_frame)
+        self.br_buttons.sgnl_toggle_interesting_frame.connect(self.toggle_interesting_frame)
+        self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
+        self.left_buttons.sgnl_toggle_interesting_frames.connect(self.show_interesting_frames)
+        self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -129,10 +134,14 @@ class MainWindow(QMainWindow):
     @pyqtSlot(int)
     def change_im_layer(self, im_idx: int) -> None:
         curr_frames = self.im_folder.curr_frames
-        im = curr_frames[im_idx]
-        self.curr_layer = im_idx
-        self.image_frame.update_image(im)
-        self.update_lbl_frame()
+        if curr_frames[im_idx]:  # Some frames might not have any layers associated with them other than im_raw
+            im = curr_frames[im_idx]
+            self.curr_layer = im_idx
+            self.image_frame.update_image(im)
+            self.update_lbl_frame()
+        else:
+            self.change_im_layer(0)  # In this case we switch back to im_raw
+            # TODO: Disable buttons that don't have a corresponding layer available (including RoIs)
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:
@@ -198,19 +207,19 @@ class MainWindow(QMainWindow):
         self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[self.curr_ann_layer], True)
 
     @pyqtSlot(bool)
-    def bad_frame(self, checked: bool) -> None:
+    def toggle_bad_frame(self, checked: bool) -> None:
         self.im_folder.toggle_bad_frame(checked)
         # A bad frame cannot be an interesting frame
         if checked:
-            self.interesting_frame(False)
+            self.toggle_interesting_frame(False)
         self.change_frame(0)
 
     @pyqtSlot(bool)
-    def interesting_frame(self, checked: bool) -> None:
+    def toggle_interesting_frame(self, checked: bool) -> None:
         self.im_folder.toggle_interesting_frame(checked)
         # An interesting frame cannot be a bad frame
         if checked:
-            self.bad_frame(False)
+            self.toggle_bad_frame(False)
         self.change_frame(0)
 
     @pyqtSlot(bool)
@@ -219,6 +228,22 @@ class MainWindow(QMainWindow):
             self.scale_bar.setVisible(True)
         else:
             self.scale_bar.setVisible(False)
+
+    @pyqtSlot(bool)
+    def show_bad_frames(self, checked: bool):
+        pass
+        # print ('Show bad frames: {}'.format(checked))
+
+    @pyqtSlot(bool)
+    def show_interesting_frames(self, checked: bool):
+        pass
+        # print ('Show intersting frames: {}'.format(checked))
+
+    @pyqtSlot(bool)
+    def show_other_frames(self, checked: bool):
+        # print ('Show other frames: {}'.format(checked))
+        self.im_folder._show_other = checked
+        self.im_folder._show_interesting = not checked
 
 
 class ScaleBar(QLabel):

@@ -28,17 +28,19 @@ class RoIsCanvas(MainCanvas):
 
     def draw_rois(self, rois: list) -> None:
         self.erase_rois()
-        painter = QPainter(self.pixmap())
-        p = painter.pen()
-        p.setWidth(2)
-        p.setColor(self.pen_colour)
-        painter.setPen(p)
-        for roi in rois:
-            roi_int = list(map(int, roi.split(',')))
-            roi_qrect = QRect(roi_int[0] / 2, roi_int[1] / 2,
-                              (roi_int[2] - roi_int[0]) / 2, (roi_int[3] - roi_int[1]) / 2)
-            painter.drawRect(roi_qrect)
-        painter.end()
+
+        if rois:
+            painter = QPainter(self.pixmap())
+            p = painter.pen()
+            p.setWidth(2)
+            p.setColor(self.pen_colour)
+            painter.setPen(p)
+            for roi in rois:
+                roi_int = list(map(int, roi.split(',')))
+                roi_qrect = QRect(roi_int[0] / 2, roi_int[1] / 2,
+                                  (roi_int[2] - roi_int[0]) / 2, (roi_int[3] - roi_int[1]) / 2)
+                painter.drawRect(roi_qrect)
+            painter.end()
         self.update()
 
     def erase_rois(self) -> None:

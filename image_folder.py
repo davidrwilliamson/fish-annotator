@@ -21,16 +21,21 @@ class ImageFolder:
         self._num_frames = len(self._all_files)
 
         self._list_image_files()
-        # self._list_rois()
+        self._list_rois()
+
+        self._intf_idx = None
 
         if self._interesting_frames:
-            self._curr_frame_no = self._interesting_frames[0]
-            self._show_all = False
+            self._intf_idx = 0
+            self._curr_frame_no = self._interesting_frames[self._intf_idx]
+            self._show_bad = False
             self._show_interesting = True
+            self._show_other = False
         else:
             self._curr_frame_no = 0
-            self._show_all = True
+            self._show_bad = False
             self._show_interesting = False
+            self._show_other = True
 
     def _load_rois_file(self) -> TextIO:
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
@@ -55,23 +60,23 @@ class ImageFolder:
 
         # self._im_files = im_files
 
-    # def _list_rois(self) -> None:
-    #     rois_file = self._load_rois_file()
-    #
-    #     roi = []
-    #     for line in rois_file.readlines():
-    #         r = re.match('^roi:', line)
-    #         f = re.match('^filename:', line)
-    #         if r:
-    #             roi.append(line.split(': ')[1].strip())
-    #         elif f:
-    #             fn = line.split(': ')[1].strip()
-    #             if roi:
-    #                 self._rois[self._all_files.index(fn)] = roi
-    #                 roi = []
-    #         else:
-    #             print('Unexpected line in RoIs file.')
-    #     self._rois[self._all_files.index(fn)] = roi
+    def _list_rois(self) -> None:
+        rois_file = self._load_rois_file()
+
+        roi = []
+        for line in rois_file.readlines():
+            r = re.match('^roi:', line)
+            f = re.match('^filename:', line)
+            if r:
+                roi.append(line.split(': ')[1].strip())
+            elif f:
+                if roi:
+                    self._rois[self._all_files.index(fn)] = roi
+                    roi = []
+                fn = line.split(': ')[1].strip()
+            else:
+                print('Unexpected line in RoIs file.')
+        self._rois[self._all_files.index(fn)] = roi
 
     @property
     def curr_files(self) -> Tuple[str, str, str]:
@@ -86,14 +91,17 @@ class ImageFolder:
     def curr_frames(self) -> Tuple[QPixmap, QPixmap, QPixmap, QPixmap]:
         ims = self.curr_files
         im_raw = load_image(ims[0], 'raw')
-        if self._curr_frame_no in self._interesting_frames:
+
+        if os.path.isfile(ims[1]):
             im_bg = load_image(ims[1], 'bg')
-            im_bm = load_image(ims[2], 'bm')
             bg_sub = bg_subtract(ims[0], ims[1])
         else:
             im_bg = None
-            im_bm = None
             bg_sub = None
+        if os.path.isfile(ims[2]):
+            im_bm = load_image(ims[2], 'bm')
+        else:
+            im_bm = None
 
         return im_raw, im_bg, im_bm, bg_sub
 
@@ -123,25 +131,26 @@ class ImageFolder:
             raise
 
     def next_frame(self) -> None:
-        if self._show_all:
+        if self._show_other:
             self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
         elif self._show_interesting:
-            int_idx = self._interesting_frames.index(self._curr_frame_no)
-            int_idx = (int_idx + 1) % len(self._interesting_frames)
-            self.go_to_frame(self._interesting_frames[int_idx])
+            if self._curr_frame_no >= self._interesting_frames[self._intf_idx]:
+                self._intf_idx = (self._intf_idx + 1) % len(self._interesting_frames)
+            self.go_to_frame(self._interesting_frames[self._intf_idx])
 
     def prev_frame(self) -> None:
-        if self._show_all:
+        if self._show_other:
             self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
         elif self._show_interesting:
-            int_idx = self._interesting_frames.index(self._curr_frame_no)
-            int_idx = (int_idx - 1) % len(self._interesting_frames)
-            self.go_to_frame(self._interesting_frames[int_idx])
+            if self._curr_frame_no <= self._interesting_frames[self._intf_idx]:
+                self._intf_idx = (self._intf_idx - 1) % len(self._interesting_frames)
+            self.go_to_frame(self._interesting_frames[self._intf_idx])
 
     def toggle_bad_frame(self, checked: bool):
         if checked:
             if self._curr_frame_no not in self._bad_frames:
                 self._bad_frames.append(self._curr_frame_no)
+                self._bad_frames.sort()
         else:
             if self._curr_frame_no in self._bad_frames:
                 self._bad_frames.remove(self._curr_frame_no)
@@ -150,13 +159,12 @@ class ImageFolder:
         if checked:
             if self._curr_frame_no not in self._interesting_frames:
                 self._interesting_frames.append(self._curr_frame_no)
+                self._interesting_frames.sort()
         else:
             if self._curr_frame_no in self._interesting_frames:
-                # This removes the current frame and points us at the "next" one in the list after deletion
-                curr_idx = self._interesting_frames.index(self._curr_frame_no)
-                next_idx = curr_idx % (len(self._interesting_frames) - 1)
                 self._interesting_frames.remove(self._curr_frame_no)
-                self.go_to_frame(self._interesting_frames[next_idx])
+                if not self._show_other:
+                    self.next_frame()
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:
@@ -183,3 +191,5 @@ def bg_subtract(im_raw: str, im_bg: str) -> QPixmap:
     im = cvtColor(im, 48)
     im = q2n.array2qimage(im)
     im = QPixmap.fromImage(im)
+
+    return im
