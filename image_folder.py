@@ -140,18 +140,18 @@ class ImageFolder:
 
     def toggle_bad_frame(self, checked: bool):
         if checked:
-            if not self.framepos[0] in self._bad_frames:
+            if self._curr_frame_no not in self._bad_frames:
                 self._bad_frames.append(self._curr_frame_no)
         else:
-            if self.framepos[0] in self._bad_frames:
+            if self._curr_frame_no in self._bad_frames:
                 self._bad_frames.remove(self._curr_frame_no)
 
     def toggle_interesting_frame(self, checked: bool):
         if checked:
-            if not self.framepos[0] in self._interesting_frames:
+            if self._curr_frame_no not in self._interesting_frames:
                 self._interesting_frames.append(self._curr_frame_no)
         else:
-            if self.framepos[0] in self._interesting_frames:
+            if self._curr_frame_no in self._interesting_frames:
                 # This removes the current frame and points us at the "next" one in the list after deletion
                 curr_idx = self._interesting_frames.index(self._curr_frame_no)
                 next_idx = curr_idx % (len(self._interesting_frames) - 1)
@@ -183,8 +183,3 @@ def bg_subtract(im_raw: str, im_bg: str) -> QPixmap:
     im = cvtColor(im, 48)
     im = q2n.array2qimage(im)
     im = QPixmap.fromImage(im)
-
-    return im
-
-def mask_list(lst, mask):
-    return [a for a, b in zip(lst, mask) if b]
