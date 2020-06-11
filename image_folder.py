@@ -26,12 +26,12 @@ class ImageFolder:
         if self._interesting_frames:
             self._intf_idx = 0
             self._curr_frame_no = self._interesting_frames[self._intf_idx]
-            self._show_bad = False
+            # self._show_bad = False
             self._show_interesting = True
             self._show_other = False
         else:
             self._curr_frame_no = 0
-            self._show_bad = False
+            # self._show_bad = False
             self._show_interesting = False
             self._show_other = True
 
@@ -125,20 +125,32 @@ class ImageFolder:
             raise
 
     def next_frame(self) -> None:
-        if self._show_other:
+        if self._show_other and self._show_interesting:
             self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
-        elif self._show_interesting:
+        elif self._show_other and not self._show_interesting:
+            self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
+            if self._curr_frame_no in self._interesting_frames:
+                self.next_frame()
+        elif self._show_interesting and not self._show_other:
             if self._curr_frame_no >= self._interesting_frames[self._intf_idx]:
                 self._intf_idx = (self._intf_idx + 1) % len(self._interesting_frames)
             self.go_to_frame(self._interesting_frames[self._intf_idx])
+        else:  # If neither show other or show interesting are checked, do nothing
+            pass
 
     def prev_frame(self) -> None:
-        if self._show_other:
+        if self._show_other and self._show_interesting:
             self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
-        elif self._show_interesting:
+        elif self._show_other and not self._show_interesting:
+            self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
+            if self._curr_frame_no in self._interesting_frames:
+                self.prev_frame()
+        elif self._show_interesting and not self._show_other:
             if self._curr_frame_no <= self._interesting_frames[self._intf_idx]:
                 self._intf_idx = (self._intf_idx - 1) % len(self._interesting_frames)
             self.go_to_frame(self._interesting_frames[self._intf_idx])
+        else:  # If neither show other or show interesting are checked, do nothing
+            pass
 
     def toggle_bad_frame(self, checked: bool) -> None:
         if checked:
