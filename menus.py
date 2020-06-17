@@ -1,6 +1,10 @@
 from enum import IntEnum
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QAction, QFileDialog, QMenuBar, QWidget
+import os
+from PyQt5.QtCore import pyqtSignal, QRect
+from PyQt5.QtGui import QPixmap, QPainter
+from PyQt5.QtWidgets import QAction, QFileDialog, QLabel, QMenuBar, QWidget
+from typing import Tuple
+
 from image_folder import ImageFolder
 
 
@@ -8,6 +12,27 @@ class ExportMenu(IntEnum):
     PREVIEW_ROIS = 0
     EXPORT_ROIS = 1
     EXPORT_MONTAGE = 2
+
+
+# class PreviewPopup(QWidget):
+#     def __init__(self) -> None:
+#         QWidget.__init__(self)
+#         self.pixmap = None
+#         self.roi: QRect = None
+#
+#     def paintEvent(self, e) -> None:
+#         painter = QPainter(self)
+#         painter.begin(self)
+#         if self.pixmap:
+#             dest_rect = QRect(self.rect().center().x() - (self.roi.width() / 2),
+#                               self.rect().center().y() - (self.roi.width() / 2), self.roi.width(), self.roi.height())
+#             painter.drawPixmap(dest_rect, self.pixmap, self.roi)
+#         painter.end()
+#
+#     def draw_pixmap(self, pixmap: QPixmap, roi: QRect):
+#         self.pixmap = pixmap
+#         self.roi = roi
+#         self.update()
 
 
 class MainMenu(QMenuBar):
@@ -27,14 +52,14 @@ class MainMenu(QMenuBar):
 
         export_menu = self.addMenu('&Export')
 
-        action_preview_rois = QAction('&Preview RoIs', self)
-        action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
+        # action_preview_rois = QAction('&Preview RoIs', self)
+        # action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
         action_export_rois = QAction('Export &RoIs', self)
-        action_export_rois.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
+        action_export_rois.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_ROIS))
         action_export_montage = QAction('Export &montage', self)
-        action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_ROIS))
+        action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
 
-        export_menu.addAction(action_preview_rois)
+        # export_menu.addAction(action_preview_rois)
         export_menu.addAction(action_export_rois)
         export_menu.addAction(action_export_montage)
 
@@ -50,39 +75,56 @@ class MainMenu(QMenuBar):
         self.sgnl_export_menu.emit(option)
 
     @staticmethod
-    def _get_max_roi(im_folder: ImageFolder) -> list:
-        curr_frame = im_folder.framepos[0]
+    def _get_max_roi(im_folder: ImageFolder) -> Tuple[int, int]:
+        width, height = 0, 0
 
-        left, top, right, bottom = 9999, 9999, 0, 0
-
-        i = 0
-        im_folder.go_to_frame(i)
-
-        while i < im_folder.num_frames:
+        for frame in im_folder.frames:
             for roi in im_folder.rois:
                 roi = list(map(int, roi.split(',')))
-                if roi[0] < left:
-                    left = roi[0]
-                if roi[1] < top:
-                    top = roi[1]
-                if roi[2] > right:
-                    right = roi[2]
-                if roi[3] > bottom:
-                    bottom = roi[3]
-            im_folder.next_frame()
-            i += 1
+                width = roi[2] - roi[0] if roi[2] - roi[0] > width else width
+                height = roi[3] - roi[1] if roi[3] - roi[1] > height else height
 
-        im_folder.go_to_frame(curr_frame)
-        max_roi = [left, bottom, right, top]
+        return width, height
 
-        return max_roi
+    @staticmethod
+    def _get_im_raw(im_folder: ImageFolder) -> Tuple[QPixmap, QRect]:
+        im_raw = im_folder.curr_frames[0]
+        rois = im_folder.rois
 
-    def preview_rois(self, im_folder: ImageFolder) -> None:
-        all_rois = self._get_max_roi(im_folder)
+        roi = rois[0]
+        roi = list(map(int, roi.split(',')))
+        roi = QRect(roi[0], roi[1], roi[2] - roi[0], roi[3] - roi[1])
+        return im_raw, roi
+
+    # def preview_rois(self, im_folder: ImageFolder) -> PreviewPopup:
+    #     popup = PreviewPopup()
+    #     w, h = self._get_max_roi(im_folder)
+    #     popup.setGeometry(QRect(100, 100, w, h))
+    #     popup.show()
+    #
+    #     return popup
+    #
+    # def update_preview(self, im_folder: ImageFolder, popup: PreviewPopup) -> None:
+    #     f = im_folder.frames
+    #
+    #     im_raw, roi = self._get_im_raw(im_folder)
+    #     popup.draw_pixmap(im_raw, roi)
+    #     next(f)
 
     def export_rois(self, im_folder: ImageFolder) -> None:
-        pass
+        try:
+            os.mkdir(os.path.join(im_folder.folder, 'png_exports'))
+        except FileExistsError:
+            print('Directory {} already exists.'.format(os.path.join(im_folder.folder, 'png_exports')))
+
+        for frame in im_folder.frames:
+            im_raw, roi = self._get_im_raw(im_folder)
+            im_save = im_raw.copy(roi)
+
+            save_path = os.path.join(im_folder.folder, 'png_exports', '{}.png'.format(im_folder.framepos[1]))
+            im_save.save(save_path, 'png')
 
     def export_montage(self, im_folder: ImageFolder) -> None:
         pass
+
 

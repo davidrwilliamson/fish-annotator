@@ -107,6 +107,17 @@ class ImageFolder:
         return cf_no, cf_fn
 
     @property
+    def frames(self):
+        # Generator that yields every frame in the current scope, in order
+        curr_frame = self._curr_frame_no
+        self.go_to_first_frame()
+        while self._curr_frame_no < self.last_frame:
+            yield curr_frame
+            self.next_frame()
+        # This returns us to the frame we were at before frames generator was called
+        self.go_to_frame(curr_frame)
+
+    @property
     def rois(self) -> list:
         return self._rois[self._curr_frame_no]
 
@@ -115,14 +126,35 @@ class ImageFolder:
         return self._num_frames
 
     @property
-    def bad_frames(self) -> list:
-        return self._bad_frames
+    def last_frame(self) -> int:
+        # This returns the INDEX of the last frame under current show other/interesting rules, not the frame itself
+        if self._show_other and self._show_interesting:
+            return self._num_frames - 1
+        elif self._show_other and not self._show_interesting:
+            for i in range(self._num_frames - 1, 0, -1):
+                if i not in self._interesting_frames:
+                    return i
+        elif self._show_interesting and not self._show_other:
+            return self._interesting_frames[-1]
 
     def go_to_frame(self, frame: int) -> None:
         if (frame >= 0) and (frame <= self.num_frames):
             self._curr_frame_no = frame
+            if self._curr_frame_no in self._interesting_frames:
+                self._intf_idx = self._interesting_frames.index(self._curr_frame_no)
         else:
             raise
+
+    def go_to_first_frame(self) -> None:
+        if self._show_other and self._show_interesting:
+            self.go_to_frame(0)
+        elif self._show_other and not self._show_interesting:
+            self.go_to_frame(0)
+            if self._curr_frame_no in self._interesting_frames:
+                self.next_frame()
+        elif self._show_interesting and not self._show_other:
+            self._intf_idx = 0
+            self.go_to_frame(self._interesting_frames[self._intf_idx])
 
     def next_frame(self) -> None:
         if self._show_other and self._show_interesting:
