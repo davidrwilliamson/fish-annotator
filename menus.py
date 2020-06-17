@@ -12,6 +12,7 @@ class ExportMenu(IntEnum):
     PREVIEW_ROIS = 0
     EXPORT_ROIS = 1
     EXPORT_MONTAGE = 2
+    EXPORT_FULL = 3
 
 
 # class PreviewPopup(QWidget):
@@ -56,11 +57,14 @@ class MainMenu(QMenuBar):
         # action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
         action_export_rois = QAction('Export &RoIs', self)
         action_export_rois.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_ROIS))
+        action_export_full = QAction('Export &full frames', self)
+        action_export_full.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_FULL))
         action_export_montage = QAction('Export &montage', self)
         action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
 
         # export_menu.addAction(action_preview_rois)
         export_menu.addAction(action_export_rois)
+        export_menu.addAction(action_export_full)
         export_menu.addAction(action_export_montage)
 
     def _call_open(self) -> None:
@@ -111,20 +115,51 @@ class MainMenu(QMenuBar):
     #     popup.draw_pixmap(im_raw, roi)
     #     next(f)
 
-    def export_rois(self, im_folder: ImageFolder) -> None:
+    @staticmethod
+    def _make_export_folder(folder, export_type: IntEnum) -> str:
+        root_path = os.path.join(folder, 'png_exports')
+
+        if export_type == ExportMenu.EXPORT_FULL:
+            subfolder = os.path.join(root_path, 'full')
+        elif export_type == ExportMenu.EXPORT_ROIS:
+            subfolder = os.path.join(root_path, 'cropped')
+        elif export_type == ExportMenu.EXPORT_MONTAGE:
+            subfolder = os.path.join(root_path, 'montage')
+        else:
+            raise
+
         try:
-            os.mkdir(os.path.join(im_folder.folder, 'png_exports'))
+            os.mkdir(root_path)
         except FileExistsError:
-            print('Directory {} already exists.'.format(os.path.join(im_folder.folder, 'png_exports')))
+            print('Directory {} already exists.'.format(os.path.join(root_path)))
+
+        try:
+            os.mkdir(subfolder)
+        except FileExistsError:
+            print('Directory {} already exists.'.format(subfolder))
+
+        return subfolder
+
+    def export_rois(self, im_folder: ImageFolder) -> None:
+        # TODO: Handle frames that don't have an RoI (this is a more general problem that ultimately needs to be handled better than just ignoring them here)
+        save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_ROIS)
 
         for frame in im_folder.frames:
             im_raw, roi = self._get_im_raw(im_folder)
             im_save = im_raw.copy(roi)
 
-            save_path = os.path.join(im_folder.folder, 'png_exports', '{}.png'.format(im_folder.framepos[1]))
+            save_path = os.path.join(save_folder, '{}_cropped.png'.format(im_folder.framepos[1]))
             im_save.save(save_path, 'png')
+
+    def export_full_frames(self, im_folder: ImageFolder) -> None:
+        save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_FULL)
+
+        for frame in im_folder.frames:
+            im_raw, _ = self._get_im_raw(im_folder)
+
+            save_path = os.path.join(save_folder, '{}_full.png'.format(im_folder.framepos[1]))
+            im_raw.save(save_path, 'png')
 
     def export_montage(self, im_folder: ImageFolder) -> None:
         pass
-
-
+        # save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_MONTAGE)

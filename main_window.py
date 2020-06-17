@@ -259,6 +259,8 @@ class MainWindow(QMainWindow):
             # updates = QTimer(self.popup)
             # updates.timeout.connect(lambda: self.main_menu.update_preview(self.im_folder, self.popup))
             # updates.start(200)
+        elif option == ExportMenu.EXPORT_FULL:
+            self.main_menu.export_full_frames(self.im_folder)
         elif option == ExportMenu.EXPORT_ROIS:
             self.main_menu.export_rois(self.im_folder)
         elif option == ExportMenu.EXPORT_MONTAGE:
