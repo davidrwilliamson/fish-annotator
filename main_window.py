@@ -139,6 +139,7 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
         self.left_buttons.enable_buttons(self.im_folder._show_other, self.im_folder._show_interesting)
+        self.main_menu.enable_export()
 
     @pyqtSlot(int)
     def change_im_layer(self, im_idx: int) -> None:
@@ -253,6 +254,8 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(int)
     def export_menu(self, option: IntEnum) -> None:
+        # TODO: Export methods should run in their own thread so as not to block the GUI,
+        #  with progress bar & notifications
         if option == ExportMenu.PREVIEW_ROIS:
             pass
             # self.popup = self.main_menu.preview_rois(self.im_folder)

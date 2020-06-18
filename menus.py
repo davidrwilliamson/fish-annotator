@@ -51,7 +51,8 @@ class MainMenu(QMenuBar):
 
         file_menu.addAction(action_open)
 
-        export_menu = self.addMenu('&Export')
+        self.export_menu = self.addMenu('&Export')
+        self.export_menu.setEnabled(False)
 
         # action_preview_rois = QAction('&Preview RoIs', self)
         # action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
@@ -63,9 +64,9 @@ class MainMenu(QMenuBar):
         action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
 
         # export_menu.addAction(action_preview_rois)
-        export_menu.addAction(action_export_rois)
-        export_menu.addAction(action_export_full)
-        export_menu.addAction(action_export_montage)
+        self.export_menu.addAction(action_export_rois)
+        self.export_menu.addAction(action_export_full)
+        self.export_menu.addAction(action_export_montage)
 
     def _call_open(self) -> None:
         dlg = QFileDialog()
@@ -77,6 +78,9 @@ class MainMenu(QMenuBar):
 
     def _call_export(self, option: IntEnum) -> None:
         self.sgnl_export_menu.emit(option)
+
+    def enable_export(self) -> None:
+        self.export_menu.setEnabled(True)
 
     @staticmethod
     def _get_max_roi(im_folder: ImageFolder) -> Tuple[int, int]:
@@ -141,7 +145,8 @@ class MainMenu(QMenuBar):
         return subfolder
 
     def export_rois(self, im_folder: ImageFolder) -> None:
-        # TODO: Handle frames that don't have an RoI (this is a more general problem that ultimately needs to be handled better than just ignoring them here)
+        # TODO: Handle frames that don't have an RoI (this is a more general problem that
+        #  ultimately needs to be handled better than just ignoring them here)
         save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_ROIS)
 
         for frame in im_folder.frames:
