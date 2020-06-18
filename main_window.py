@@ -1,4 +1,3 @@
-import os
 from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice, QTimer
 from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget

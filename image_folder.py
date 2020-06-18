@@ -114,6 +114,7 @@ class ImageFolder:
         while self._curr_frame_no < self.last_frame:
             yield curr_frame
             self.next_frame()
+        yield curr_frame
         # This returns us to the frame we were at before frames generator was called
         self.go_to_frame(curr_frame)
 
