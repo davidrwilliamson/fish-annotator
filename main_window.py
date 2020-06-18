@@ -1,3 +1,4 @@
+import os
 from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice, QTimer
 from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
@@ -93,7 +94,7 @@ class MainWindow(QMainWindow):
         b_f = len(self.im_folder._bad_frames)
         self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f)
 
-    def save_annotations(self) -> None:
+    def save_annotations_mem(self) -> None:
         canvases = [None] * len(self.annotation_canvases)
         save: bool = False
         i = 0
@@ -110,7 +111,7 @@ class MainWindow(QMainWindow):
         if save:
             self.saved_canvases[self.im_folder.framepos[0]] = canvases
 
-    def load_annotations(self) -> None:
+    def load_annotations_mem(self) -> None:
         k = self.im_folder.framepos[0]
         # If the current frame has ANY annotations on it, on any layer...
         if self.saved_canvases[k]:
@@ -127,6 +128,36 @@ class MainWindow(QMainWindow):
         else:
             for canvas in self.annotation_canvases:
                 canvas.erase_all()
+
+    def save_annotations_disk(self) -> None:
+        save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
+        os.makedirs(save_folder)
+        for i in range(len(self.saved_canvases)):
+            frame = self.saved_canvases[i]
+            if frame:
+                for j in range(len(frame)):
+                    canvas = frame[j]
+                    buffer: QBuffer = canvas.buffer()
+                    pmap = QPixmap()
+                    pmap.loadFromData(buffer, 'png')
+                    buffer.close()
+
+                    save_path = os.path.join(save_folder, '{}_{}.png'.format(i, j))
+                    pmap.save(save_path, 'png')
+
+    def load_annotations_disk(self) -> None:
+        save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
+        if os.path.isdir(save_folder):
+            annotations = [file for file in os.listdir(save_folder)]
+            for file in annotations:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')))
+
+                pmap = QPixmap(file, 'png')
+                buffer = QBuffer()
+                buffer.open(QIODevice.ReadWrite)
+                pmap.save(buffer, 'png')
+                self.saved_canvases[i][j] = buffer
+                buffer.close()
 
     @pyqtSlot(ImageFolder)
     def set_im_folder(self, im_folder: ImageFolder) -> None:
@@ -181,7 +212,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(int)
     def change_frame(self, direction: int) -> None:
-        self.save_annotations()
+        self.save_annotations_mem()
         if direction > 0:
             self.im_folder.next_frame()
         if direction < 0:
@@ -189,7 +220,7 @@ class MainWindow(QMainWindow):
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
-        self.load_annotations()
+        self.load_annotations_mem()
 
         # This is a gross hack that should be fixed/removed,
         # but I want to make sure that boxes are checked correctly when a frame is loaded
@@ -268,7 +299,6 @@ class MainWindow(QMainWindow):
             self.main_menu.export_rois(self.im_folder)
         elif option == ExportMenu.EXPORT_MONTAGE:
             self.main_menu.export_montage(self.im_folder)
-
 
 class ScaleBar(QLabel):
     def __init__(self, parent: QWidget, scale: float) -> None:
