@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice
+from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice, QTimer
 from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
 from typing import List
@@ -12,6 +12,8 @@ from menus import *
 class MainWindow(QMainWindow):
     def __init__(self, parent: QMainWindow = None) -> None:
         super(MainWindow, self).__init__(parent)
+
+        # self.popup = None
 
         self.im_folder: ImageFolder = None
         self.curr_layer: int = 0
@@ -63,7 +65,7 @@ class MainWindow(QMainWindow):
 
         # Connect up button signals
         self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
-        # self.main_menu.sgnl_export_menu.connect(self.export_menu)
+        self.main_menu.sgnl_export_menu.connect(self.export_menu)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
@@ -168,6 +170,7 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
         self.left_buttons.enable_buttons(self.im_folder._show_other, self.im_folder._show_interesting)
+        self.main_menu.enable_export()
 
     @pyqtSlot(int)
     def change_im_layer(self, im_idx: int) -> None:
@@ -280,6 +283,22 @@ class MainWindow(QMainWindow):
     def show_other_frames(self, checked: bool) -> None:
         self.im_folder._show_other = checked
 
+    @pyqtSlot(int)
+    def export_menu(self, option: IntEnum) -> None:
+        # TODO: Export methods should run in their own thread so as not to block the GUI,
+        #  with progress bar & notifications
+        if option == ExportMenu.PREVIEW_ROIS:
+            pass
+            # self.popup = self.main_menu.preview_rois(self.im_folder)
+            # updates = QTimer(self.popup)
+            # updates.timeout.connect(lambda: self.main_menu.update_preview(self.im_folder, self.popup))
+            # updates.start(200)
+        elif option == ExportMenu.EXPORT_FULL:
+            self.main_menu.export_full_frames(self.im_folder)
+        elif option == ExportMenu.EXPORT_ROIS:
+            self.main_menu.export_rois(self.im_folder)
+        elif option == ExportMenu.EXPORT_MONTAGE:
+            self.main_menu.export_montage(self.im_folder)
 
 class ScaleBar(QLabel):
     def __init__(self, parent: QWidget, scale: float) -> None:
