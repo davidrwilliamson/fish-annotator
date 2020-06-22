@@ -207,12 +207,21 @@ class MainWindow(QMainWindow):
             self.change_im_layer(0)  # In this case we switch back to im_raw
             # TODO: Disable buttons that don't have a corresponding layer available (including RoIs)
 
-    @pyqtSlot(int)
-    def change_tool(self, idx: int) -> None:
-        if idx == 0:
-            ann_layer: PaintingCanvas = self.annotation_canvases[self.curr_ann_layer]
+    @pyqtSlot(IntEnum)
+    def change_tool(self, idx: IntEnum) -> None:
+        ann_layer: PaintingCanvas = self.annotation_canvases[self.curr_ann_layer]
+        if idx == ToolBtn.PAINT:
+            ann_layer.brush_erase = False
+            self.right_buttons.btn_paint.setChecked(True)
+            self.right_buttons.btn_erase.setChecked(False)
+        if idx == ToolBtn.ERASE:
+            ann_layer.brush_erase = True
+            self.right_buttons.btn_paint.setChecked(False)
+            self.right_buttons.btn_erase.setChecked(True)
+        if idx == ToolBtn.CLEAR:
             ann_layer.erase_all()
             ann_layer.update()
+            self.change_tool(ToolBtn.PAINT)
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:
@@ -222,14 +231,15 @@ class MainWindow(QMainWindow):
             # self.right_buttons.enable_buttons(False, range(9, 11))
         if ann_idx >= 0:  # This means we won't try to set the brush image before a canvas exists
             self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
-            self.right_buttons.enable_buttons(False, selection=range(8, 13))
+            self.right_buttons.enable_buttons(False, selection=range(8, 12))
             self.curr_ann_layer = ann_idx
             self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[ann_idx], checked)
         if checked:  # Lets us hide annotations again by unchecking button
             self.right_buttons.btn_paint.setChecked(True)
+            self.change_tool(ToolBtn.PAINT)
             self.annotation_canvases[ann_idx].setEnabled(True)
             self.annotation_canvases[ann_idx].setVisible(True)
-            self.right_buttons.enable_buttons(selection=range(8, 13))
+            self.right_buttons.enable_buttons(selection=range(8, 12))
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:
@@ -313,7 +323,7 @@ class MainWindow(QMainWindow):
     def show_other_frames(self, checked: bool) -> None:
         self.im_folder._show_other = checked
 
-    @pyqtSlot(int)
+    @pyqtSlot(IntEnum)
     def export_menu(self, option: IntEnum) -> None:
         # TODO: Export methods should run in their own thread so as not to block the GUI,
         #  with progress bar & notifications

@@ -38,7 +38,7 @@ class ExportMenu(IntEnum):
 
 class MainMenu(QMenuBar):
     sgnl_im_folder = pyqtSignal(ImageFolder)
-    sgnl_export_menu = pyqtSignal(int)
+    sgnl_export_menu = pyqtSignal(IntEnum)
 
     def __init__(self, parent: QWidget) -> None:
         super(MainMenu, self).__init__(parent)

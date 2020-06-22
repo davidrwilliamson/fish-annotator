@@ -61,6 +61,7 @@ class PaintingCanvas(MainCanvas):
         self.pen_colour = QColor(colour)
         self.pen_size = 5
         self.is_used = False
+        self.brush_erase = False
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if self.last_x is None:  # First event.
@@ -74,7 +75,12 @@ class PaintingCanvas(MainCanvas):
         # painter.setCompositionMode(QPainter.CompositionMode_Overlay) doesn't seem to do anything useful?
         p = painter.pen()
         p.setWidth(self.pen_size)
-        p.setColor(self.pen_colour)
+        if self.brush_erase:
+            painter.setCompositionMode(QPainter.CompositionMode_Clear)
+            p.setColor(QColor('transparent'))
+        else:
+            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+            p.setColor(self.pen_colour)
         painter.setPen(p)
         painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         painter.end()

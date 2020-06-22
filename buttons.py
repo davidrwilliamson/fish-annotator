@@ -10,6 +10,12 @@ class FrameToggle(IntEnum):
     OTHER = 2
 
 
+class ToolBtn(IntEnum):
+    PAINT = 0
+    ERASE = 1
+    CLEAR = 2
+
+
 class BottomButtons(QWidget):
     sgnl_change_frame = pyqtSignal(int)
     sgnl_adjust_brightness = pyqtSignal(int)
@@ -87,7 +93,7 @@ class RightButtons(QWidget):
     sgnl_change_ann_layer = pyqtSignal(bool, int)
     sgnl_toggle_rois = pyqtSignal(bool)
     sgnl_adjust_brush_size = pyqtSignal(int)
-    sgnl_change_tool = pyqtSignal(int)
+    sgnl_change_tool = pyqtSignal(IntEnum)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(RightButtons, self).__init__(parent)
@@ -166,22 +172,22 @@ class RightButtons(QWidget):
         self._sldr_brush_size.valueChanged.connect(self._call_adjust_brush_size)
 
         self.btn_paint = QPushButton('Paintbrush')
-        self.btn_fill = QPushButton('Fill')
         self.btn_erase = QPushButton('Erase')
         self.btn_clear = QPushButton('Clear')
-        for btn in [self.btn_paint, self.btn_fill, self.btn_erase]:
+        self.btns_painting = [self.btn_paint, self.btn_erase]
+        for btn in self.btns_painting:
             btn.setCheckable(True)
-        self.btns_painting = [self.btn_paint, self.btn_fill, self.btn_erase]
 
         layout_paint_tools.addWidget(lbl_paint, 1)
         layout_paint_tools.addLayout(layout_curr_brush)
         layout_paint_tools.addWidget(self._sldr_brush_size)
         layout_paint_tools.addWidget(self.btn_paint)
-        layout_paint_tools.addWidget(self.btn_fill)
         layout_paint_tools.addWidget(self.btn_erase)
         layout_paint_tools.addWidget(self.btn_clear)
 
-        self.btn_clear.clicked.connect(lambda: self._call_change_tool(0))
+        self.btn_paint.clicked.connect(lambda: self._call_change_tool(ToolBtn.PAINT))
+        self.btn_erase.clicked.connect(lambda: self._call_change_tool(ToolBtn.ERASE))
+        self.btn_clear.clicked.connect(lambda: self._call_change_tool(ToolBtn.CLEAR))
 
         self.enable_buttons(False)
 
@@ -204,7 +210,7 @@ class RightButtons(QWidget):
     def _call_adjust_brush_size(self, value: int) -> None:
         self.sgnl_adjust_brush_size.emit(value)
 
-    def _call_change_tool(self, idx: int) -> None:
+    def _call_change_tool(self, idx: IntEnum) -> None:
         self.sgnl_change_tool.emit(idx)
 
     @staticmethod
@@ -215,11 +221,11 @@ class RightButtons(QWidget):
             else:
                 buttons[i].setChecked(False)
 
-    def enable_buttons(self, enable: bool = True, selection=range(13)) -> None:
+    def enable_buttons(self, enable: bool = True, selection=range(12)) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
-                   self.btn_paint, self.btn_fill, self.btn_erase, self.btn_clear,
+                   self.btn_paint, self.btn_erase, self.btn_clear,
                    self._sldr_brush_size]
         for btn in selection:
             buttons[btn].setEnabled(enable)
