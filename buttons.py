@@ -87,6 +87,7 @@ class RightButtons(QWidget):
     sgnl_change_ann_layer = pyqtSignal(bool, int)
     sgnl_toggle_rois = pyqtSignal(bool)
     sgnl_adjust_brush_size = pyqtSignal(int)
+    sgnl_change_tool = pyqtSignal(int)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(RightButtons, self).__init__(parent)
@@ -180,6 +181,8 @@ class RightButtons(QWidget):
         layout_paint_tools.addWidget(self.btn_erase)
         layout_paint_tools.addWidget(self.btn_clear)
 
+        self.btn_clear.clicked.connect(lambda: self._call_change_tool(0))
+
         self.enable_buttons(False)
 
     def _call_change_im_layer(self, idx: int) -> None:
@@ -200,6 +203,9 @@ class RightButtons(QWidget):
 
     def _call_adjust_brush_size(self, value: int) -> None:
         self.sgnl_adjust_brush_size.emit(value)
+
+    def _call_change_tool(self, idx: int) -> None:
+        self.sgnl_change_tool.emit(idx)
 
     @staticmethod
     def uncheck_others(buttons: list, btn: int) -> None:

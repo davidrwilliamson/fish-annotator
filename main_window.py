@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtSlot, QBuffer, QIODevice, QTimer
+from PyQt5.QtCore import pyqtSlot, QBuffer, QByteArray, QIODevice, QTimer
 from PyQt5.QtGui import QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
 from typing import List
@@ -67,6 +67,7 @@ class MainWindow(QMainWindow):
         self.main_menu.sgnl_export_menu.connect(self.export_menu)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
+        self.right_buttons.sgnl_change_tool.connect(self.change_tool)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
         self.right_buttons.sgnl_adjust_brush_size.connect(self.adjust_brush_size)
         self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
@@ -80,6 +81,10 @@ class MainWindow(QMainWindow):
         self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
 
         self.setWindowTitle("Fish Annotator")
+
+    def closeEvent(self, event):
+        self.save_annotations_mem()
+        self.save_annotations_disk()
 
     def update_lbl_frame(self) -> None:
         folder = self.im_folder.folder
@@ -117,8 +122,13 @@ class MainWindow(QMainWindow):
             for i in range(len(self.saved_canvases[k])):
                 # If this specific layer has an annotation on it, display that annotation
                 if self.saved_canvases[k][i]:
-                    buffer = self.saved_canvases[k][i].buffer()
-                    self.annotation_canvases[i].pixmap().loadFromData(buffer)
+                    # This seems to always be QBuffer, but an empty buffer when loading from file. Not sure why.
+                    if type(self.saved_canvases[k][i]) is QBuffer:
+                        buffer = self.saved_canvases[k][i].buffer()
+                    elif type(self.saved_canvases[k][i]) is QByteArray:
+                        raise
+                        buffer = self.saved_canvases[k][i]
+                    self.annotation_canvases[i].pixmap().loadFromData(buffer, 'png')
                 # Otherwise clear the layer so we aren't showing annotations from other frames
                 else:
                     self.annotation_canvases[i].erase_all()
@@ -129,20 +139,27 @@ class MainWindow(QMainWindow):
                 canvas.erase_all()
 
     def save_annotations_disk(self) -> None:
+        if self.im_folder is None:
+            return
+
         save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
-        os.makedirs(save_folder)
+        try:
+            os.makedirs(save_folder)
+        except FileExistsError:
+            pass
+
         for i in range(len(self.saved_canvases)):
             frame = self.saved_canvases[i]
             if frame:
                 for j in range(len(frame)):
                     canvas = frame[j]
-                    buffer: QBuffer = canvas.buffer()
-                    pmap = QPixmap()
-                    pmap.loadFromData(buffer, 'png')
-                    buffer.close()
+                    if canvas:
+                        buffer: QByteArray = canvas.buffer()
+                        pmap = QPixmap()
+                        pmap.loadFromData(buffer, 'png')
 
-                    save_path = os.path.join(save_folder, '{}_{}.png'.format(i, j))
-                    pmap.save(save_path, 'png')
+                        save_path = os.path.join(save_folder, '{}_{}.png'.format(i, j))
+                        pmap.save(save_path, 'png')
 
     def load_annotations_disk(self) -> None:
         save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
@@ -155,6 +172,11 @@ class MainWindow(QMainWindow):
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
                 pmap.save(buffer, 'png')
+                if self.saved_canvases[i] is None:
+                    self.saved_canvases[i] = []
+                if len(self.saved_canvases[i]) < j + 1:
+                    for _ in range(j - len(self.saved_canvases[i]) + 1):
+                        self.saved_canvases[i].append(None)
                 self.saved_canvases[i][j] = buffer
                 buffer.close()
 
@@ -162,6 +184,8 @@ class MainWindow(QMainWindow):
     def set_im_folder(self, im_folder: ImageFolder) -> None:
         self.im_folder = im_folder
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
+        self.load_annotations_disk()
+        self.load_annotations_mem()
         self.change_im_layer(0)
         self.change_frame(0)
         self.right_buttons.enable_buttons(selection=range(8))
@@ -182,6 +206,13 @@ class MainWindow(QMainWindow):
         else:
             self.change_im_layer(0)  # In this case we switch back to im_raw
             # TODO: Disable buttons that don't have a corresponding layer available (including RoIs)
+
+    @pyqtSlot(int)
+    def change_tool(self, idx: int) -> None:
+        if idx == 0:
+            ann_layer: PaintingCanvas = self.annotation_canvases[self.curr_ann_layer]
+            ann_layer.erase_all()
+            ann_layer.update()
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:
@@ -298,6 +329,7 @@ class MainWindow(QMainWindow):
             self.main_menu.export_rois(self.im_folder)
         elif option == ExportMenu.EXPORT_MONTAGE:
             self.main_menu.export_montage(self.im_folder)
+
 
 class ScaleBar(QLabel):
     def __init__(self, parent: QWidget, scale: float) -> None:
