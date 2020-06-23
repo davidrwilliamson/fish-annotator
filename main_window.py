@@ -122,13 +122,9 @@ class MainWindow(QMainWindow):
             for i in range(len(self.saved_canvases[k])):
                 # If this specific layer has an annotation on it, display that annotation
                 if self.saved_canvases[k][i]:
-                    # This seems to always be QBuffer, but an empty buffer when loading from file. Not sure why.
-                    if type(self.saved_canvases[k][i]) is QBuffer:
-                        buffer = self.saved_canvases[k][i].buffer()
-                    elif type(self.saved_canvases[k][i]) is QByteArray:
-                        raise
-                        buffer = self.saved_canvases[k][i]
+                    buffer = self.saved_canvases[k][i].buffer()
                     self.annotation_canvases[i].pixmap().loadFromData(buffer, 'png')
+                    self.annotation_canvases[i].is_used = True
                 # Otherwise clear the layer so we aren't showing annotations from other frames
                 else:
                     self.annotation_canvases[i].erase_all()
@@ -167,18 +163,23 @@ class MainWindow(QMainWindow):
             annotations = [file for file in os.listdir(save_folder)]
             for file in annotations:
                 i, j = list(map(int, os.path.splitext(file)[0].split('_')))
+                full_path = os.path.join(save_folder, file)
 
-                pmap = QPixmap(file, 'png')
+                pmap = QPixmap()
+                pmap.load(full_path, 'png')
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
-                pmap.save(buffer, 'png')
+                is_saved = pmap.save(buffer, 'png')
+                if not is_saved:
+                    raise
+                buffer.close()
+
                 if self.saved_canvases[i] is None:
                     self.saved_canvases[i] = []
                 if len(self.saved_canvases[i]) < j + 1:
                     for _ in range(j - len(self.saved_canvases[i]) + 1):
                         self.saved_canvases[i].append(None)
                 self.saved_canvases[i][j] = buffer
-                buffer.close()
 
     @pyqtSlot(ImageFolder)
     def set_im_folder(self, im_folder: ImageFolder) -> None:
