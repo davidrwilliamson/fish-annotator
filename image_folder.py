@@ -42,6 +42,7 @@ class ImageFolder:
             rois_file = open(rois_filename, 'rt')
         else:
             raise RuntimeError('{}: RoIs file missing.'.format(self.folder))
+        # TODO: Handle this gracefully in program rather than crashing out
 
         return rois_file
 
@@ -165,6 +166,8 @@ class ImageFolder:
             if self._curr_frame_no in self._interesting_frames:
                 self.next_frame()
         elif self._show_interesting and not self._show_other:
+            # There is a bug were if multiple frames are unchecked around start/end frame we get list index out of range
+            # TODO: Pin down and fix this bug
             if self._curr_frame_no >= self._interesting_frames[self._intf_idx]:
                 self._intf_idx = (self._intf_idx + 1) % len(self._interesting_frames)
             self.go_to_frame(self._interesting_frames[self._intf_idx])
