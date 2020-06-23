@@ -183,6 +183,10 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(ImageFolder)
     def set_im_folder(self, im_folder: ImageFolder) -> None:
+        # TODO: Reset inactive buttons/step out of annotation mode when changing image folders
+        self.save_annotations_mem()
+        self.save_annotations_disk()
+
         self.im_folder = im_folder
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.load_annotations_disk()
