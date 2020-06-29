@@ -15,9 +15,16 @@ class ToolBtn(IntEnum):
     ERASE = 1
     CLEAR = 2
 
+class NavBtn(IntEnum):
+    START = 0
+    END = 1
+    PREV = 2
+    NEXT = 3
+    NOCHANGE = 4
+
 
 class BottomButtons(QWidget):
-    sgnl_change_frame = pyqtSignal(int)
+    sgnl_change_frame = pyqtSignal(IntEnum)
     sgnl_adjust_brightness = pyqtSignal(int)
     sgnl_adjust_contrast = pyqtSignal(int)
     sgnl_toggle_scale_bar = pyqtSignal(bool)
@@ -31,19 +38,21 @@ class BottomButtons(QWidget):
         self.cb_scale_bar.toggled.connect(self._call_toggle_scale_bar)
         self.cb_scale_bar.setChecked(False)
 
-        self.btn_play = QPushButton('Play')
-        self.btn_pause = QPushButton('Pause')
+        self.btn_start = QPushButton('Start')
+        self.btn_end = QPushButton('End')
         self.btn_prev = QPushButton('Previous')
         self.btn_next = QPushButton('Next')
 
-        layout_buttons = QGridLayout()
-        layout_buttons.addWidget(self.btn_play, 0, 0)
-        layout_buttons.addWidget(self.btn_pause, 0, 1)
-        layout_buttons.addWidget(self.btn_prev, 1, 0)
-        layout_buttons.addWidget(self.btn_next, 1, 1)
+        layout_buttons = QHBoxLayout()
+        layout_buttons.addWidget(self.btn_start)
+        layout_buttons.addWidget(self.btn_prev)
+        layout_buttons.addWidget(self.btn_next)
+        layout_buttons.addWidget(self.btn_end)
 
-        self.btn_prev.clicked.connect(lambda: self._call_change(-1))
-        self.btn_next.clicked.connect(lambda: self._call_change(1))
+        self.btn_prev.clicked.connect(lambda: self._call_change(NavBtn.PREV))
+        self.btn_next.clicked.connect(lambda: self._call_change(NavBtn.NEXT))
+        self.btn_start.clicked.connect(lambda: self._call_change(NavBtn.START))
+        self.btn_end.clicked.connect(lambda: self._call_change(NavBtn.END))
 
         lbl_brightness = QLabel('Brightness')
         lbl_contrast = QLabel('Contrast')
@@ -68,8 +77,8 @@ class BottomButtons(QWidget):
 
         self.enable_buttons(False)
 
-    def _call_change(self, direction: int) -> None:
-        self.sgnl_change_frame.emit(direction)
+    def _call_change(self, value: IntEnum) -> None:
+        self.sgnl_change_frame.emit(value)
 
     def _call_sldr_brightness(self, value: int) -> None:
         self.sgnl_adjust_brightness.emit(value)
@@ -82,7 +91,7 @@ class BottomButtons(QWidget):
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
-        buttons = [self.btn_play, self.btn_pause, self.btn_next, self.btn_prev,
+        buttons = [self.btn_start, self.btn_end, self.btn_next, self.btn_prev,
                    self._sldr_brightness, self._sldr_contrast]
         for btn in buttons:
             btn.setEnabled(enable)
