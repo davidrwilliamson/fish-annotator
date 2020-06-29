@@ -166,8 +166,6 @@ class ImageFolder:
             if self._curr_frame_no in self._interesting_frames:
                 self.next_frame()
         elif self._show_interesting and not self._show_other:
-            # There is a bug were if multiple frames are unchecked around start/end frame we get list index out of range
-            # TODO: Pin down and fix this bug
             if self._curr_frame_no >= self._interesting_frames[self._intf_idx]:
                 self._intf_idx = (self._intf_idx + 1) % len(self._interesting_frames)
             self.go_to_frame(self._interesting_frames[self._intf_idx])
@@ -204,6 +202,9 @@ class ImageFolder:
                 self._interesting_frames.sort()
         else:
             if self._curr_frame_no in self._interesting_frames:
+                # If this is the last interesting frame, go back one so we don't get out of range
+                if self._curr_frame_no is self._interesting_frames[-1]:
+                    self._intf_idx -= 1
                 self._interesting_frames.remove(self._curr_frame_no)
                 if not self._show_other:
                     self.next_frame()

@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
         self.load_annotations_disk()
         self.load_annotations_mem()
         self.change_im_layer(0)
-        self.change_frame(0)
+        self.change_frame(NavBtn.NOCHANGE)
         self.right_buttons.enable_buttons(selection=range(8))
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
@@ -255,13 +255,17 @@ class MainWindow(QMainWindow):
         else:
             self.rois_canvas.erase_rois()
 
-    @pyqtSlot(int)
-    def change_frame(self, direction: int) -> None:
+    @pyqtSlot(IntEnum)
+    def change_frame(self, value: IntEnum) -> None:
         self.save_annotations_mem()
-        if direction > 0:
+        if value is NavBtn.NEXT:
             self.im_folder.next_frame()
-        if direction < 0:
+        elif value is NavBtn.PREV:
             self.im_folder.prev_frame()
+        elif value is NavBtn.START:
+            self.im_folder.go_to_first_frame()
+        elif value is NavBtn.END:
+            self.im_folder.go_to_frame(self.im_folder.last_frame)
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
@@ -298,7 +302,7 @@ class MainWindow(QMainWindow):
         # A bad frame cannot be an interesting frame
         if checked:
             self.toggle_interesting_frame(False)
-        self.change_frame(0)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(bool)
     def toggle_interesting_frame(self, checked: bool) -> None:
@@ -306,7 +310,7 @@ class MainWindow(QMainWindow):
         # An interesting frame cannot be a bad frame
         if checked:
             self.toggle_bad_frame(False)
-        self.change_frame(0)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(bool)
     def toggle_scale_bar(self, checked: bool) -> None:
