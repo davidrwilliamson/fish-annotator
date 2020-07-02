@@ -76,7 +76,7 @@ class MainMenu(QMenuBar):
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.Directory)
         if dlg.exec_():
-            folder = dlg.selectedFiles()[0]
+            folder = dlg.getExistingDirectory(None, "Select Folder", '.', QFileDialog.ShowDirsOnly)
             self.image_folder = ImageFolder(folder)
             self.sgnl_im_folder.emit(self.image_folder)
 

@@ -59,9 +59,11 @@ class PaintingCanvas(MainCanvas):
 
         self.last_x, self.last_y = None, None
         self.pen_colour = QColor(colour)
-        self.pen_size = 5
+        self.pen_size = 3
         self.is_used = False
         self.brush_erase = False
+
+        self.outline_canvas = OutlineCanvas(self, colour)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         if self.last_x is None:  # First event.
@@ -96,6 +98,8 @@ class PaintingCanvas(MainCanvas):
         self.last_x = None
         self.last_y = None
 
+        self.outline_canvas.update()
+
     def erase_all(self) -> None:
         painter = QPainter(self.pixmap())
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
@@ -103,6 +107,7 @@ class PaintingCanvas(MainCanvas):
         painter.eraseRect(extents)
         painter.end()
         self.update()
+        self.outline_canvas.update()
         self.is_used = False  # Now that the canvas is empty we mark it as unused
 
 
@@ -149,3 +154,23 @@ class ImageFrame(MainCanvas):
         self.image = im.scaled(self._w, self._h, Qt.KeepAspectRatioByExpanding)
         self._adjust_image()
         self.update()
+
+
+class OutlineCanvas(MainCanvas):
+    def __init__(self, parent: PaintingCanvas, colour: str) -> None:
+        super(OutlineCanvas, self).__init__(parent)
+
+        self.pen_colour = QColor(colour)
+        self.pen_size = 3
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter()
+        painter.begin(self)
+
+        p = painter.pen()
+        p.setWidth(self.pen_size)
+        p.setColor(self.pen_colour)
+
+        # painter.drawPoints()
+
+        painter.end()
