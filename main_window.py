@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
         # Connect up button signals
         self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
         self.main_menu.sgnl_export_menu.connect(self.export_menu)
+        self.main_menu.sgnl_save_ann.connect(self.save_ann)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_change_tool.connect(self.change_tool)
@@ -180,6 +181,13 @@ class MainWindow(QMainWindow):
                     for _ in range(j - len(self.saved_canvases[i]) + 1):
                         self.saved_canvases[i].append(None)
                 self.saved_canvases[i][j] = buffer
+
+    @pyqtSlot()
+    def save_ann(self):
+        self.save_annotations_mem()
+        self.save_annotations_disk()
+        self.load_annotations_disk()
+        self.load_annotations_mem()
 
     @pyqtSlot(ImageFolder)
     def set_im_folder(self, im_folder: ImageFolder) -> None:

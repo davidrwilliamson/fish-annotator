@@ -39,6 +39,7 @@ class ExportMenu(IntEnum):
 class MainMenu(QMenuBar):
     sgnl_im_folder = pyqtSignal(ImageFolder)
     sgnl_export_menu = pyqtSignal(IntEnum)
+    sgnl_save_ann = pyqtSignal()
 
     def __init__(self, parent: QWidget) -> None:
         super(MainMenu, self).__init__(parent)
@@ -47,9 +48,12 @@ class MainMenu(QMenuBar):
         file_menu = self.addMenu('&File')
 
         action_open = QAction('&Open folder', self)
+        action_save = QAction('&Save annotations', self)
         action_open.triggered.connect(self._call_open)
+        action_save.triggered.connect(self._call_save)
 
         file_menu.addAction(action_open)
+        file_menu.addAction(action_save)
 
         self.export_menu = self.addMenu('&Export')
         self.export_menu.setEnabled(False)
@@ -75,6 +79,9 @@ class MainMenu(QMenuBar):
             folder = dlg.selectedFiles()[0]
             self.image_folder = ImageFolder(folder)
             self.sgnl_im_folder.emit(self.image_folder)
+
+    def _call_save(self) -> None:
+        self.sgnl_save_ann.emit()
 
     def _call_export(self, option: IntEnum) -> None:
         self.sgnl_export_menu.emit(option)
