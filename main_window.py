@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
                         pmap = QPixmap()
                         pmap.loadFromData(buffer, 'png')
 
-                        save_path = os.path.join(save_folder, '{}_{}.png'.format(i, j))
+                        save_path = os.path.join(save_folder, '{}_{}_{}.png'.format(self.im_folder.folder, i, j))
                         pmap.save(save_path, 'png')
 
     def load_annotations_disk(self) -> None:
