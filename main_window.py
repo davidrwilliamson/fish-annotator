@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
                         pmap = QPixmap()
                         pmap.loadFromData(buffer, 'png')
 
-                        save_path = os.path.join(save_folder, '{}_{}_{}.png'.format(self.im_folder.folder, i, j))
+                        save_path = os.path.join(save_folder, '{}_{}_{}.png'.format(self.im_folder._all_files[i], i, j))
                         pmap.save(save_path, 'png')
 
     def load_annotations_disk(self) -> None:
@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
         if os.path.isdir(save_folder):
             annotations = [file for file in os.listdir(save_folder)]
             for file in annotations:
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')))
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
                 full_path = os.path.join(save_folder, file)
 
                 pmap = QPixmap()
