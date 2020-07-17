@@ -2,11 +2,12 @@ import numpy as np
 import cv2 as cv
 import os
 
-# Note that this works with opencv 4.3, not 3.4 !
 
+# Note that this works with opencv 4.3, not 3.4 !
 def load_image(path) -> np.ndarray:
     im = cv.imread(path, cv.IMREAD_GRAYSCALE)
     return im
+
 
 def im_fill(im: np.ndarray) -> np.ndarray:
     # https://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/
@@ -47,9 +48,10 @@ def im_fill(im: np.ndarray) -> np.ndarray:
 
     return im_out
 
+
 def outline_points(im: np.ndarray) -> list:
     points = []
-    contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE) # '[0][:-1])
+    contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)  # '[0][:-1])
     if len(contours) >= 1:
         for cnt in contours:
             epsilon = 0.001 * cv.arcLength(cnt, True)
@@ -66,6 +68,7 @@ def outline_points(im: np.ndarray) -> list:
 
     return points
 
+
 def output_nn_labels(labels: list):
     first_line = 'filename,file_size,file_attributes,region_count,region_id,region_shape_attributes,region_attributes\n'
     out_str = first_line
@@ -76,7 +79,9 @@ def output_nn_labels(labels: list):
         else:
             out_str = out_str + label[0]
 
+    # Need to remove trailing newlines at this point or the NN trainer has problems
     return out_str
+
 
 def labels_eggs(path: str, points):
     region_count = len(points)
@@ -90,21 +95,25 @@ def labels_eggs(path: str, points):
 
     return regions_strings
 
+
 def format_region_string(path: str, region_count: int, region_id: int, polygon: np.ndarray, region_type: str) -> str:
     str_file_info = format_file_info_string(path)
     str_polygon = format_polygon_string(polygon)
-    str_region = '"{{""region: ""{}""}}"'.format(region_type)
+    str_region = '"{{""region"": ""{}""}}"'.format(region_type)
 
     str_out = '{},{},{},{},{}\n'.format(str_file_info, region_count, region_id, str_polygon, str_region)
 
     return str_out
 
+
 def format_file_info_string(path: str) -> str:
     filename = os.path.split(path)[1]
+    filename = '{}_full.png'.format(filename.split('_')[0])  # Hack because filenames of image don't match annotation filename
     file_size = os.stat(path).st_size
     str_out = '{},{},{{}}'.format(filename, file_size)
 
     return str_out
+
 
 def format_polygon_string(polygon: np.ndarray) -> str:
     str_start = '"{""name"": ""polygon"", '
@@ -117,12 +126,13 @@ def format_polygon_string(polygon: np.ndarray) -> str:
 
     return str_out
 
+
 def main():
     labels = []
-    folders = ['annotations'] # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
+    folders = ['annotations']  # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
 
     for ff in folders:
-        folder = os.path.join('/home/davidw/Desktop/cod_eggs_training/scaled_down', ff) # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200410/1/analysis/annotations'
+        folder = os.path.join('/home/davidw/Desktop/cod_eggs_training/scaled_down', ff)  # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200410/1/analysis/annotations'
         files = sorted([file for file in os.listdir(folder) if os.path.splitext(file)[1] == '.png'])
 
         for f in files:

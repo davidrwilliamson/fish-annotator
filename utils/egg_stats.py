@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sb
 
+
 def prepare_dataframe():
     stats_file = '/home/davidw/Desktop/circle_stats.csv'
     sep = ';'
@@ -22,6 +23,7 @@ def prepare_dataframe():
     df = df.explode('radius')
 
     return df
+
 
 def main():
     df: pd.DataFrame = prepare_dataframe()
@@ -62,8 +64,8 @@ def main():
         df['treatment'] = np.where(df['folder'].isin(t), t_labels[i], df['treatment'])
         i += 1
 
-
     day_plot = sb.boxplot(x='day', y='radius', data=df)
     treat_plot = sb.boxplot(x='treatment', y='radius', data=df)
+
 
 main()
