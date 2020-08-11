@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSlot, QBuffer, QByteArray, QIODevice, QTimer
-from PyQt5.QtGui import QPen
+from PyQt5.QtGui import QKeyEvent, QPen
 from PyQt5.QtWidgets import QGridLayout, QLabel, QMainWindow, QWidget
 from typing import List
 
@@ -82,6 +82,27 @@ class MainWindow(QMainWindow):
         self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
 
         self.setWindowTitle("Fish Annotator")
+
+    def keyPressEvent(self, e: QKeyEvent) -> None:
+        k_p = e.key()
+        # Only if paint button is already enabled, meaning we're in annotation mode
+        if self.right_buttons.btn_paint.isEnabled():
+            if k_p == Qt.Key_B:
+                self.change_tool(ToolBtn.PAINT)
+            elif k_p == Qt.Key_E:
+                self.change_tool(ToolBtn.ERASE)
+
+        # if self.right_buttons.btn_paint.isChecked() or self.right_buttons.btn_erase.isChecked():
+        #     if k_p == Qt.Key_Up:
+        #         self.right_buttons._sldr_brush_size.triggerAction(1)  # QAbstractSlider::SliderSingleStepAdd
+        #     elif k_p == Qt.Key_Down:
+        #         self.right_buttons._sldr_brush_size.triggerAction(2)  # QAbstractSlider::SliderSingleStepSub
+
+        if self.im_folder:
+            if k_p == Qt.Key_BracketLeft:
+                self.change_frame(NavBtn.PREV)
+            elif k_p == Qt.Key_BracketRight:
+                self.change_frame(NavBtn.NEXT)
 
     def closeEvent(self, event):
         self.save_annotations_mem()

@@ -177,7 +177,7 @@ class RightButtons(QWidget):
 
         self._sldr_brush_size = QSlider(Qt.Horizontal)
         self._sldr_brush_size.setRange(1, 20)
-        self._sldr_brush_size.setValue(5)
+        self._sldr_brush_size.setValue(3)
         self._sldr_brush_size.valueChanged.connect(self._call_adjust_brush_size)
 
         self.btn_paint = QPushButton('Paintbrush')
