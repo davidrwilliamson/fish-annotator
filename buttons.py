@@ -121,18 +121,24 @@ class RightButtons(QWidget):
         self.btn_ann_0 = QPushButton('Myotome')
         self.btn_ann_1 = QPushButton('Eyes')
         self.btn_ann_2 = QPushButton('Yolk')
+        self.btn_ann_3 = QPushButton('Embryo')
+        self.btn_ann_4 = QPushButton('Egg')
 
         layout_ann_layers.addWidget(lbl_ann_layers, 1)
         layout_ann_layers.addWidget(self.btn_ann_0)
         layout_ann_layers.addWidget(self.btn_ann_1)
         layout_ann_layers.addWidget(self.btn_ann_2)
+        layout_ann_layers.addWidget(self.btn_ann_3)
+        layout_ann_layers.addWidget(self.btn_ann_4)
 
-        for btn in [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2]:
+        for btn in [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4]:
             btn.setCheckable(True)
 
         self.btn_ann_0.clicked.connect(lambda checked, idx=0: self._call_change_ann_layer(checked, idx))
         self.btn_ann_1.clicked.connect(lambda checked, idx=1: self._call_change_ann_layer(checked, idx))
         self.btn_ann_2.clicked.connect(lambda checked, idx=2: self._call_change_ann_layer(checked, idx))
+        self.btn_ann_3.clicked.connect(lambda checked, idx=3: self._call_change_ann_layer(checked, idx))
+        self.btn_ann_4.clicked.connect(lambda checked, idx=4: self._call_change_ann_layer(checked, idx))
 
         # Image layers
         # Row 1, Column 0
@@ -208,7 +214,7 @@ class RightButtons(QWidget):
     def _call_change_ann_layer(self, checked: bool, idx: int) -> None:
         self.sgnl_change_ann_layer.emit(checked, idx)
 
-        buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2]
+        buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4]
         for i in range(len(buttons)):
             if i != idx:
                 buttons[i].setChecked(False)
@@ -230,9 +236,9 @@ class RightButtons(QWidget):
             else:
                 buttons[i].setChecked(False)
 
-    def enable_buttons(self, enable: bool = True, selection=range(12)) -> None:
+    def enable_buttons(self, enable: bool = True, selection=range(14)) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
-        buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2,
+        buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
                    self.btn_paint, self.btn_erase, self.btn_clear,
                    self._sldr_brush_size]

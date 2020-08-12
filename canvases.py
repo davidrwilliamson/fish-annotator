@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QRect, QSize, Qt
+from PyQt5.QtCore import QPointF, QRect, QSize, Qt
 from PyQt5.QtGui import QColor, QImage, QMouseEvent, QPainter, QPixmap
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QWidget
 import qimage2ndarray as q2n
@@ -109,6 +109,21 @@ class PaintingCanvas(MainCanvas):
         self.update()
         self.outline_canvas.update()
         self.is_used = False  # Now that the canvas is empty we mark it as unused
+
+    def draw_circle(self, circle) -> None:
+        x, y, r = (circle[0] / 2), (circle[1] / 2), (circle[2] / 2)
+        c = QPointF(x, y)
+        painter = QPainter(self.pixmap())
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        p = painter.pen()
+        p.setColor(self.pen_colour)
+        p.setWidth(1)
+        painter.setPen(p)
+        painter.drawEllipse(c, r, r)
+        painter.end()
+        self.update()
+
+        self.is_used = True
 
 
 class ImageFrame(MainCanvas):

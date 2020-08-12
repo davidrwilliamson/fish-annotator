@@ -15,6 +15,9 @@ class ExportMenu(IntEnum):
     EXPORT_FULL = 3
 
 
+class AnalysisMenu(IntEnum):
+    CIRCLES = 0
+
 # class PreviewPopup(QWidget):
 #     def __init__(self) -> None:
 #         QWidget.__init__(self)
@@ -39,6 +42,7 @@ class ExportMenu(IntEnum):
 class MainMenu(QMenuBar):
     sgnl_im_folder = pyqtSignal(ImageFolder)
     sgnl_export_menu = pyqtSignal(IntEnum)
+    sgnl_analysis_menu = pyqtSignal(IntEnum)
     sgnl_save_ann = pyqtSignal()
 
     def __init__(self, parent: QWidget) -> None:
@@ -72,6 +76,14 @@ class MainMenu(QMenuBar):
         self.export_menu.addAction(action_export_full)
         self.export_menu.addAction(action_export_montage)
 
+        self.analysis_menu = self.addMenu('&Analysis')
+        self.analysis_menu.setEnabled(False)
+
+        action_analyse_circles = QAction('Find egg circles', self)
+        action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
+
+        self.analysis_menu.addAction(action_analyse_circles)
+
     def _call_open(self) -> None:
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.Directory)
@@ -87,8 +99,12 @@ class MainMenu(QMenuBar):
     def _call_export(self, option: IntEnum) -> None:
         self.sgnl_export_menu.emit(option)
 
+    def _call_analyse(self, option: IntEnum) -> None:
+        self.sgnl_analysis_menu.emit(option)
+
     def enable_export(self) -> None:
         self.export_menu.setEnabled(True)
+        self.analysis_menu.setEnabled(True)
 
     @staticmethod
     def _get_max_roi(im_folder: ImageFolder) -> Tuple[int, int]:

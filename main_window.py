@@ -6,7 +6,7 @@ from typing import List
 from buttons import *
 from canvases import *
 from menus import *
-
+from analysis import *
 
 class MainWindow(QMainWindow):
     def __init__(self, parent: QMainWindow = None) -> None:
@@ -38,6 +38,8 @@ class MainWindow(QMainWindow):
         self.annotation_canvases.append(PaintingCanvas(self, 'red'))
         self.annotation_canvases.append(PaintingCanvas(self, 'blue'))
         self.annotation_canvases.append(PaintingCanvas(self, 'green'))
+        self.annotation_canvases.append(PaintingCanvas(self, 'purple'))
+        self.annotation_canvases.append(PaintingCanvas(self, 'cyan'))
 
         self.change_ann_layer(False, self.curr_ann_layer)  # Disables and hides annotation canvases
 
@@ -65,6 +67,7 @@ class MainWindow(QMainWindow):
         # Connect up button signals
         self.main_menu.sgnl_im_folder.connect(self.set_im_folder)
         self.main_menu.sgnl_export_menu.connect(self.export_menu)
+        self.main_menu.sgnl_analysis_menu.connect(self.analysis_menu)
         self.main_menu.sgnl_save_ann.connect(self.save_ann)
         self.right_buttons.sgnl_change_im_layer.connect(self.change_im_layer)
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
@@ -182,7 +185,7 @@ class MainWindow(QMainWindow):
     def load_annotations_disk(self) -> None:
         save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
         if os.path.isdir(save_folder):
-            annotations = [file for file in os.listdir(save_folder)]
+            annotations = [file for file in os.listdir(save_folder) if os.path.splitext(file)[1] == '.png']
             for file in annotations:
                 i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
                 full_path = os.path.join(save_folder, file)
@@ -222,7 +225,7 @@ class MainWindow(QMainWindow):
         self.load_annotations_mem()
         self.change_im_layer(0)
         self.change_frame(NavBtn.NOCHANGE)
-        self.right_buttons.enable_buttons(selection=range(8))
+        self.right_buttons.enable_buttons(selection=range(10))
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
@@ -265,7 +268,7 @@ class MainWindow(QMainWindow):
             # self.right_buttons.enable_buttons(False, range(9, 11))
         if ann_idx >= 0:  # This means we won't try to set the brush image before a canvas exists
             self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
-            self.right_buttons.enable_buttons(False, selection=range(8, 12))
+            self.right_buttons.enable_buttons(False, selection=range(10, 14))
             self.curr_ann_layer = ann_idx
             self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[ann_idx], checked)
         if checked:  # Lets us hide annotations again by unchecking button
@@ -273,7 +276,7 @@ class MainWindow(QMainWindow):
             self.change_tool(ToolBtn.PAINT)
             self.annotation_canvases[ann_idx].setEnabled(True)
             self.annotation_canvases[ann_idx].setVisible(True)
-            self.right_buttons.enable_buttons(selection=range(8, 12))
+            self.right_buttons.enable_buttons(selection=range(10, 14))
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:
@@ -377,6 +380,15 @@ class MainWindow(QMainWindow):
             self.main_menu.export_rois(self.im_folder)
         elif option == ExportMenu.EXPORT_MONTAGE:
             self.main_menu.export_montage(self.im_folder)
+
+    @pyqtSlot(IntEnum)
+    def analysis_menu(self, option: IntEnum) -> None:
+        if option == AnalysisMenu.CIRCLES:
+            if self.curr_ann_layer != 4:
+                self.right_buttons.btn_ann_4.click()
+            circles = find_circles(self.im_folder.curr_files[0])
+        for circle in circles[0, :]:
+            self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
 
 
 class ScaleBar(QLabel):
