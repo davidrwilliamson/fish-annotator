@@ -96,17 +96,21 @@ class MainWindow(QMainWindow):
             elif k_p == Qt.Key_E:
                 self.change_tool(ToolBtn.ERASE)
 
-        # if self.right_buttons.btn_paint.isChecked() or self.right_buttons.btn_erase.isChecked():
-        #     if k_p == Qt.Key_Up:
-        #         self.right_buttons._sldr_brush_size.triggerAction(1)  # QAbstractSlider::SliderSingleStepAdd
-        #     elif k_p == Qt.Key_Down:
-        #         self.right_buttons._sldr_brush_size.triggerAction(2)  # QAbstractSlider::SliderSingleStepSub
-
         if self.im_folder:
             if k_p == Qt.Key_BracketLeft:
                 self.change_frame(NavBtn.PREV)
             elif k_p == Qt.Key_BracketRight:
                 self.change_frame(NavBtn.NEXT)
+            if k_p == Qt.Key_1:
+                self.right_buttons.btn_ann_0.click()
+            if k_p == Qt.Key_2:
+                self.right_buttons.btn_ann_1.click()
+            if k_p == Qt.Key_3:
+                self.right_buttons.btn_ann_2.click()
+            if k_p == Qt.Key_4:
+                self.right_buttons.btn_ann_3.click()
+            if k_p == Qt.Key_5:
+                self.right_buttons.btn_ann_4.click()
 
     def closeEvent(self, event):
         self.save_annotations_mem()
@@ -266,12 +270,14 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:
-        self.save_annotations_mem()
         for canvas in self.annotation_canvases:
             canvas.setEnabled(False)
             canvas.setVisible(False)
             # self.right_buttons.enable_buttons(False, range(9, 11))
         if ann_idx >= 0:  # This means we won't try to set the brush image before a canvas exists
+            self.save_annotations_mem()
+            self.load_annotations_mem()
+
             self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
             self.right_buttons.enable_buttons(False, selection=range(10, 15))
             self.curr_ann_layer = ann_idx
