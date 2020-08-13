@@ -8,6 +8,7 @@ from canvases import *
 from menus import *
 from analysis import *
 
+
 class MainWindow(QMainWindow):
     def __init__(self, parent: QMainWindow = None) -> None:
         super(MainWindow, self).__init__(parent)
@@ -259,16 +260,20 @@ class MainWindow(QMainWindow):
             ann_layer.erase_all()
             ann_layer.update()
             self.change_tool(ToolBtn.PAINT)
+        if idx == ToolBtn.REVERT:
+            self.load_annotations_mem()
+            ann_layer.update()
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:
+        self.save_annotations_mem()
         for canvas in self.annotation_canvases:
             canvas.setEnabled(False)
             canvas.setVisible(False)
             # self.right_buttons.enable_buttons(False, range(9, 11))
         if ann_idx >= 0:  # This means we won't try to set the brush image before a canvas exists
             self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
-            self.right_buttons.enable_buttons(False, selection=range(10, 14))
+            self.right_buttons.enable_buttons(False, selection=range(10, 15))
             self.curr_ann_layer = ann_idx
             self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[ann_idx], checked)
         if checked:  # Lets us hide annotations again by unchecking button
@@ -276,7 +281,7 @@ class MainWindow(QMainWindow):
             self.change_tool(ToolBtn.PAINT)
             self.annotation_canvases[ann_idx].setEnabled(True)
             self.annotation_canvases[ann_idx].setVisible(True)
-            self.right_buttons.enable_buttons(selection=range(10, 14))
+            self.right_buttons.enable_buttons(selection=range(10, 15))
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:

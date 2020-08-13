@@ -14,6 +14,8 @@ class ToolBtn(IntEnum):
     PAINT = 0
     ERASE = 1
     CLEAR = 2
+    REVERT = 3
+
 
 class NavBtn(IntEnum):
     START = 0
@@ -183,12 +185,13 @@ class RightButtons(QWidget):
 
         self._sldr_brush_size = QSlider(Qt.Horizontal)
         self._sldr_brush_size.setRange(1, 20)
-        self._sldr_brush_size.setValue(3)
+        self._sldr_brush_size.setValue(2)
         self._sldr_brush_size.valueChanged.connect(self._call_adjust_brush_size)
 
         self.btn_paint = QPushButton('Paintbrush')
         self.btn_erase = QPushButton('Erase')
         self.btn_clear = QPushButton('Clear')
+        self.btn_revert = QPushButton('Revert')
         self.btns_painting = [self.btn_paint, self.btn_erase]
         for btn in self.btns_painting:
             btn.setCheckable(True)
@@ -199,10 +202,12 @@ class RightButtons(QWidget):
         layout_paint_tools.addWidget(self.btn_paint)
         layout_paint_tools.addWidget(self.btn_erase)
         layout_paint_tools.addWidget(self.btn_clear)
+        layout_paint_tools.addWidget(self.btn_revert)
 
         self.btn_paint.clicked.connect(lambda: self._call_change_tool(ToolBtn.PAINT))
         self.btn_erase.clicked.connect(lambda: self._call_change_tool(ToolBtn.ERASE))
         self.btn_clear.clicked.connect(lambda: self._call_change_tool(ToolBtn.CLEAR))
+        self.btn_revert.clicked.connect(lambda: self._call_change_tool(ToolBtn.REVERT))
 
         self.enable_buttons(False)
 
@@ -236,11 +241,11 @@ class RightButtons(QWidget):
             else:
                 buttons[i].setChecked(False)
 
-    def enable_buttons(self, enable: bool = True, selection=range(14)) -> None:
+    def enable_buttons(self, enable: bool = True, selection=range(15)) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
-                   self.btn_paint, self.btn_erase, self.btn_clear,
+                   self.btn_paint, self.btn_erase, self.btn_clear, self.btn_revert,
                    self._sldr_brush_size]
         for btn in selection:
             buttons[btn].setEnabled(enable)
