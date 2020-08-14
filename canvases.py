@@ -267,9 +267,10 @@ class NNPreviewCanvas(MainCanvas):
         painter.drawPixmap(0, 0, self.pixmap())
 
         if self.points:
-            for point in self.points[0]:
-                p = point[0]
-                p = QPoint(p[0], p[1])
-                painter.drawPoint(p)
+            for group in self.points:
+                for point in group:
+                    p = point[0]
+                    p = QPoint(p[0], p[1])
+                    painter.drawPoint(p)
 
         painter.end()

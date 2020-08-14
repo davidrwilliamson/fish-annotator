@@ -79,7 +79,7 @@ class MainMenu(QMenuBar):
         self.analysis_menu = self.addMenu('&Analysis')
         self.analysis_menu.setEnabled(False)
 
-        action_analyse_circles = QAction('Find egg circles', self)
+        action_analyse_circles = QAction('&Find egg circles', self)
         action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
 
         self.analysis_menu.addAction(action_analyse_circles)

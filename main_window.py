@@ -98,6 +98,8 @@ class MainWindow(QMainWindow):
                 self.change_tool(ToolBtn.PAINT)
             elif k_p == Qt.Key_E:
                 self.change_tool(ToolBtn.ERASE)
+            if k_p == Qt.Key_N:
+                self.right_buttons.btn_nn_preview.click()
 
         if self.im_folder:
             if k_p == Qt.Key_BracketLeft:
@@ -308,7 +310,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(bool)
     def toggle_nn_preview(self, checked: bool) -> None:
-        if checked:
+        if checked and self.curr_ann_layer >= 0:
             self.annotation_canvases[self.curr_ann_layer].setVisible(False)
             self.nn_preview_canvas.draw_preview(self.annotation_canvases[self.curr_ann_layer])
             self.nn_preview_canvas.setVisible(True)
