@@ -103,18 +103,24 @@ class RightButtons(QWidget):
     sgnl_change_im_layer = pyqtSignal(int)
     sgnl_change_ann_layer = pyqtSignal(bool, int)
     sgnl_toggle_rois = pyqtSignal(bool)
+    sgnl_toggle_nn_preview = pyqtSignal(bool)
     sgnl_adjust_brush_size = pyqtSignal(int)
     sgnl_change_tool = pyqtSignal(IntEnum)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(RightButtons, self).__init__(parent)
-        layout = QGridLayout(self)
+        layout = QVBoxLayout(self)
+        layout_top_row = QHBoxLayout()
+
         layout_ann_layers = QVBoxLayout()
-        layout_im_layers = QVBoxLayout()
         layout_paint_tools = QVBoxLayout()
-        layout.addLayout(layout_ann_layers, 0, 0)
-        layout.addLayout(layout_im_layers, 1, 0)
-        layout.addLayout(layout_paint_tools, 0, 1)
+        layout_im_layers = QVBoxLayout()
+
+        layout_top_row.addLayout(layout_ann_layers)
+        layout_top_row.addLayout(layout_paint_tools)
+
+        layout.addLayout(layout_top_row)
+        layout.addLayout(layout_im_layers)
 
         # Annotation layers
         # Row 0, Column 0
@@ -151,7 +157,8 @@ class RightButtons(QWidget):
         self.btn_bg_im = QPushButton('Background')
         self.btn_bm_im = QPushButton('Binary Mask')
         self.btn_rois = QPushButton('RoIs')
-        for btn in [self.btn_raw_im, self.btn_bg_sub, self.btn_bg_im, self.btn_bm_im, self.btn_rois]:
+        self.btn_nn_preview = QPushButton('NN Input Preview')
+        for btn in [self.btn_raw_im, self.btn_bg_sub, self.btn_bg_im, self.btn_bm_im, self.btn_rois, self.btn_nn_preview]:
             btn.setCheckable(True)
 
         self.btn_raw_im.clicked.connect(lambda: self._call_change_im_layer(0))
@@ -159,6 +166,7 @@ class RightButtons(QWidget):
         self.btn_bm_im.clicked.connect(lambda: self._call_change_im_layer(2))
         self.btn_bg_sub.clicked.connect(lambda: self._call_change_im_layer(3))
         self.btn_rois.toggled.connect(self._call_toggle_rois)
+        self.btn_nn_preview.toggled.connect(self._call_toggle_nn_preview)
 
         self.btns_im_layers = [self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub]
 
@@ -168,6 +176,7 @@ class RightButtons(QWidget):
         layout_im_layers.addWidget(self.btn_bg_sub)
         layout_im_layers.addWidget(self.btn_bm_im)
         layout_im_layers.addWidget(self.btn_rois)
+        layout_im_layers.addWidget(self.btn_nn_preview)
 
         # Paint tools
         # Row 0, Column 1
@@ -227,6 +236,9 @@ class RightButtons(QWidget):
     def _call_toggle_rois(self, checked: bool) -> None:
         self.sgnl_toggle_rois.emit(checked)
 
+    def _call_toggle_nn_preview(self, checked: bool) -> None:
+        self.sgnl_toggle_nn_preview.emit(checked)
+
     def _call_adjust_brush_size(self, value: int) -> None:
         self.sgnl_adjust_brush_size.emit(value)
 
@@ -241,10 +253,10 @@ class RightButtons(QWidget):
             else:
                 buttons[i].setChecked(False)
 
-    def enable_buttons(self, enable: bool = True, selection=range(15)) -> None:
+    def enable_buttons(self, enable: bool = True, selection=range(16)) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4,
-                   self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois,
+                   self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois, self.btn_nn_preview,
                    self.btn_paint, self.btn_erase, self.btn_clear, self.btn_revert,
                    self._sldr_brush_size]
         for btn in selection:

@@ -27,6 +27,7 @@ class MainWindow(QMainWindow):
         # TODO: Add a border around the image, even when it isn't visible
         self.image_frame = ImageFrame(self)
         self.rois_canvas = RoIsCanvas(self)
+        self.nn_preview_canvas = NNPreviewCanvas(self)
         self.lbl_frame = QLabel('\n')
         # self.lbl_frame_no = QLabel('\n')
         # self.lbl_frame_no.setAlignment(Qt.AlignRight)
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         # grid_layout.addWidget(self.lbl_frame_no, 0, 1)
         grid_layout.addWidget(self.image_frame, 1, 1)
         grid_layout.addWidget(self.rois_canvas, 1, 1)
+        grid_layout.addWidget(self.nn_preview_canvas, 1, 1)
         for canvas in self.annotation_canvases:
             grid_layout.addWidget(canvas, 1, 1)
 
@@ -74,6 +76,7 @@ class MainWindow(QMainWindow):
         self.right_buttons.sgnl_change_ann_layer.connect(self.change_ann_layer)
         self.right_buttons.sgnl_change_tool.connect(self.change_tool)
         self.right_buttons.sgnl_toggle_rois.connect(self.toggle_rois)
+        self.right_buttons.sgnl_toggle_nn_preview.connect(self.toggle_nn_preview)
         self.right_buttons.sgnl_adjust_brush_size.connect(self.adjust_brush_size)
         self.bottom_buttons.sgnl_change_frame.connect(self.change_frame)
         self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
@@ -278,16 +281,21 @@ class MainWindow(QMainWindow):
             self.save_annotations_mem()
             self.load_annotations_mem()
 
+            if self.right_buttons.btn_nn_preview.isChecked():
+                self.nn_preview_canvas.draw_preview(self.annotation_canvases[ann_idx])
+
             self.right_buttons.uncheck_others(self.right_buttons.btns_painting, -1)
-            self.right_buttons.enable_buttons(False, selection=range(10, 15))
+            self.right_buttons.enable_buttons(False, selection=range(10, 16))
             self.curr_ann_layer = ann_idx
             self.right_buttons.set_lbl_curr_brush(self.annotation_canvases[ann_idx], checked)
-        if checked:  # Lets us hide annotations again by unchecking button
-            self.right_buttons.btn_paint.setChecked(True)
-            self.change_tool(ToolBtn.PAINT)
-            self.annotation_canvases[ann_idx].setEnabled(True)
-            self.annotation_canvases[ann_idx].setVisible(True)
-            self.right_buttons.enable_buttons(selection=range(10, 15))
+            if checked:  # Lets us hide annotations again by unchecking button
+                self.right_buttons.btn_paint.setChecked(True)
+                self.change_tool(ToolBtn.PAINT)
+                self.annotation_canvases[ann_idx].setEnabled(True)
+                self.annotation_canvases[ann_idx].setVisible(True)
+                self.right_buttons.enable_buttons(selection=range(10, 16))
+            else:
+                self.curr_ann_layer = -1
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:
@@ -297,6 +305,17 @@ class MainWindow(QMainWindow):
             self.rois_canvas.draw_rois(rois)
         else:
             self.rois_canvas.erase_rois()
+
+    @pyqtSlot(bool)
+    def toggle_nn_preview(self, checked: bool) -> None:
+        if checked:
+            self.annotation_canvases[self.curr_ann_layer].setVisible(False)
+            self.nn_preview_canvas.draw_preview(self.annotation_canvases[self.curr_ann_layer])
+            self.nn_preview_canvas.setVisible(True)
+        else:
+            self.annotation_canvases[self.curr_ann_layer].setVisible(True)
+            self.nn_preview_canvas.setVisible(False)
+            self.right_buttons.btn_nn_preview.setChecked(False)
 
     @pyqtSlot(IntEnum)
     def change_frame(self, value: IntEnum) -> None:
@@ -309,10 +328,15 @@ class MainWindow(QMainWindow):
             self.im_folder.go_to_first_frame()
         elif value is NavBtn.END:
             self.im_folder.go_to_frame(self.im_folder.last_frame)
+
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:
             self.rois_canvas.draw_rois(self.im_folder.rois)
         self.load_annotations_mem()
+
+        # When we change frames, update NN input preview
+        if self.right_buttons.btn_nn_preview.isChecked():
+            self.nn_preview_canvas.draw_preview(self.annotation_canvases[self.curr_ann_layer])
 
         # This is a gross hack that should be fixed/removed,
         # but I want to make sure that boxes are checked correctly when a frame is loaded
