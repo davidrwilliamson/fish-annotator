@@ -2,6 +2,9 @@ import numpy as np
 import cv2 as cv
 import os
 
+# This and the other utils files are extremely dirty.
+# They can be expected to break and/or cause irreparable data loss without warning.
+# Use with caution or, better yet, not at all.
 
 # Note that this works with opencv 4.3, not 3.4 !
 def load_image(path) -> np.ndarray:
@@ -83,15 +86,28 @@ def output_nn_labels(labels: list):
     return out_str
 
 
-def labels_eggs(path: str, points):
+def labels_cod(path: str, feature: int, points):
+    if feature == '0':
+        feature_string = 'body'
+    elif feature == '1':
+        feature_string = 'eye'
+    elif feature == '2':
+        feature_string = 'yolk'
+    elif feature == '3':
+        feature_string = 'body'
+    elif feature == '4':
+        feature_string = 'egg'
+    else:
+        raise
+
     region_count = len(points)
     if region_count > 1:
         regions_strings = []
         for region_id in range(len(points)):
-            r_s = format_region_string(path, region_count, region_id, points[region_id], 'body')
+            r_s = format_region_string(path, region_count, region_id, points[region_id], feature_string)
             regions_strings.append(r_s)
     else:
-        regions_strings = [format_region_string(path, 1, 0, points[0], 'body')]
+        regions_strings = [format_region_string(path, 1, 0, points[0], feature_string)]
 
     return regions_strings
 
@@ -132,26 +148,29 @@ def main():
     folders = ['annotations']  # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
 
     for ff in folders:
-        folder = os.path.join('/home/davidw/Desktop/cod_eggs_training/scaled_down', ff)  # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200410/1/analysis/annotations'
+        folder = os.path.join('/home/davidw/Desktop/cod_egg_training/', ff)  # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200410/1/analysis/annotations'
+        # folder = os.path.join('/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200413/DCA-2,50/analysis/annotations')
         files = sorted([file for file in os.listdir(folder) if os.path.splitext(file)[1] == '.png'])
 
         for f in files:
+            feature = os.path.splitext(f.split('_')[-1])[0]
             path = os.path.join(folder, f)
             im = load_image(path)
             im_filled = im_fill(im)
             points = outline_points(im_filled)
-            label = labels_eggs(path, points)
+            label = labels_cod(path, feature, points)
             labels.append(label)
 
-    out_file = output_nn_labels(labels)
-    # Show processing steps outputs
-    cv.imshow('Raw outline', im)
-    cv.imshow('Filled area of interest', im_filled)
-    points_im = np.zeros(im.shape, np.uint8)
-    for p in points:
-        cv.drawContours(points_im, p, -1 ,255, 3)
-    cv.imshow("Points on boundary", points_im)
-    cv.waitKey()
+            # # Show processing steps outputs
+            # cv.imshow('Raw outline', im)
+            # cv.imshow('Filled area of interest', im_filled)
+            # points_im = np.zeros(im.shape, np.uint8)
+            # for p in points:
+            #     cv.drawContours(points_im, p, -1, 255, 3)
+            # cv.imshow("Points on boundary", points_im)
+            # cv.waitKey()
 
+    out_text = output_nn_labels(labels)
+    _ = None
 
 main()

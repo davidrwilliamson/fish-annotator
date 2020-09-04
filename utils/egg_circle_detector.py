@@ -2,6 +2,10 @@ import numpy as np
 import cv2 as cv
 import os
 
+# This and the other utils files are extremely dirty.
+# They can be expected to break and/or cause irreparable data loss without warning.
+# Use with caution or, better yet, not at all.
+
 def main():
     folders = ['20200404/3', '20200405/1', '20200406/1', '20200407/1',
                '20200410/1', '20200410/DCA-ctrl', '20200410/DCA-0,15', '20200410/DCA-0,31', '20200410/DCA-0,62',

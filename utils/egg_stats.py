@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sb
 
+# This and the other utils files are extremely dirty.
+# They can be expected to break and/or cause irreparable data loss without warning.
+# Use with caution or, better yet, not at all.
 
 def prepare_dataframe():
     stats_file = '/home/davidw/Desktop/circle_stats.csv'
@@ -65,7 +68,7 @@ def main():
         i += 1
 
     day_plot = sb.boxplot(x='day', y='radius', data=df)
-    treat_plot = sb.boxplot(x='treatment', y='radius', data=df)
+    # treat_plot = sb.boxplot(x='treatment', y='radius', data=df)
 
 
 main()
