@@ -47,9 +47,39 @@ def draw_masks(im: np.ndarray, masks: np.ndarray, body_idx: np.ndarray, eye_idx:
     n = body_masks.shape[2]
     for i in range(n):
         mask = body_masks[:, :, i].squeeze()
-        body_outline = cv.dilate(mask, np.ones([5, 5])) - mask
+        body_outline = cv.dilate(mask, np.ones([3, 3])) - mask
 
         im[body_outline != 0] = (0, 0, 255)
+
+    eye_masks = masks[:, :, eye_idx].astype(np.uint8)
+    n = eye_masks.shape[2]
+    for i in range(n):
+        mask = eye_masks[:, :, i].squeeze()
+        eye_outline = cv.dilate(mask, np.ones([3, 3])) - mask
+
+        im[eye_outline != 0] = (255, 0, 0)
+
+    yolk_masks = masks[:, :, yolk_idx].astype(np.uint8)
+    n = yolk_masks.shape[2]
+    for i in range(n):
+        mask = yolk_masks[:, :, i].squeeze()
+        yolk_outline = cv.dilate(mask, np.ones([3, 3])) - mask
+
+        im[yolk_outline != 0] = (0, 127, 0)
+
+    return im
+
+
+def draw_labels(im: np.ndarray, min_eye_diameters: list, scale: float):
+    font = cv.FONT_HERSHEY_SIMPLEX
+
+    padding_h = 0
+    padding_w = 10
+
+    for fish in min_eye_diameters:
+        for eye in fish:
+            diameter, pos_x, pos_y = eye[0], eye[1] + padding_w, eye[2] + padding_h
+            im = cv.putText(im, '{:0.2f}mm'.format(diameter / scale), (pos_x, pos_y), font, 0.5, (255, 0, 0), 1, cv.LINE_AA)
 
     return im
 
@@ -117,23 +147,33 @@ def get_valid_inner_rois(rois: np.ndarray, body_idx: np.ndarray, inner_idx: np.n
     return good_roi_idx
 
 
-def measure_eyes(masks: np.ndarray, eye_idx: np.ndarray):
+def measure_eyes(masks: np.ndarray, eye_idx: np.ndarray) -> list:
+    min_eye_diameters = []
+
     eye_masks = masks[:, :, eye_idx].astype(np.uint8)
     n = eye_masks.shape[2]
+
     for i in range(n):
         mask = eye_masks[:, :, i].squeeze()
         lbl = sk_morph.label(mask > 0)
         region_props = sk_measure.regionprops(lbl, cache=False)
 
+        temp_eye_diameters = []
         for region in region_props:
             binary_image = region.image.astype(np.uint8)
-            min_eye_diameter_1 = region.minor_axis_length
+            # We take the minimum diameter of the convex hull of the eye because of cases where we have figure 8 eyes
             convex_hull = region.convex_image.astype(np.uint8)
             hull_props = sk_measure.regionprops(convex_hull)
-            min_eye_diameter_2 = hull_props[0].minor_axis_length
+            min_eye_diameter = hull_props[0].minor_axis_length
+            # Eye centroid in image space with offset in x for placing eye labels
+            eye_pos_x = int(hull_props[0].centroid[1] + (hull_props[0].bbox[3] / 2) + region_props[0].bbox[1])
+            eye_pos_y = int(hull_props[0].centroid[0] + region_props[0].bbox[0])
 
-            edges = cv.dilate(binary_image, np.ones([3, 3])) - binary_image
-        foo = -1
+            temp_eye_diameters.append([min_eye_diameter, eye_pos_x, eye_pos_y])
+
+        min_eye_diameters.append(temp_eye_diameters)
+
+    return min_eye_diameters
 
 
 def correct_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np.ndarray:
@@ -189,6 +229,7 @@ def measure_body(masks: np.ndarray, body_idx: np.ndarray):
 
 
 def main() -> None:
+    scale = 287.0
     files = [f for f in os.listdir(output_folder) if
              (os.path.isfile(os.path.join(output_folder, f)) and os.path.splitext(f)[1] != '.csv')]
     files.sort()
@@ -208,12 +249,15 @@ def main() -> None:
 
         if np.any(body_idx):
             if np.any(eye_idx):
-                im = draw_rois(im, rois, body_idx, eye_idx, yolk_idx)
-                # measure_eyes(masks, eye_idx)
+
                 masks = correct_body_masks(masks, body_idx)
                 body_idx = remove_overlapping_body_masks(masks, body_idx)
                 # measure_body(masks, body_idx)
+                min_eye_diameters = measure_eyes(masks, eye_idx)
+
+                im = draw_rois(im, rois, body_idx, eye_idx, yolk_idx)
                 im = draw_masks(im, masks, body_idx, eye_idx, yolk_idx)
+                im = draw_labels(im, min_eye_diameters, scale)
 
                 cv.imshow('Neural Network output', im)
                 cv.waitKey(0)
