@@ -8,6 +8,8 @@ from skimage import morphology as sk_morph
 from skimage import measure as sk_measure
 from skimage import transform as sk_transform
 
+from scipy.stats import linregress
+
 """
 TODO:
     Each body should contain at least one and no more than two eyes
@@ -17,7 +19,8 @@ TODO:
     Label fish with corresponding body parts
 """
 
-output_folder = '/home/dave/Desktop/bernard_test/'
+# output_folder = '/home/dave/Desktop/bernard_test/'
+output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-ctrl/'
 image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-ctrl/'
 
 
@@ -223,14 +226,17 @@ def measure_body(masks: np.ndarray, body_idx: np.ndarray):
 
         # Myotome length
         skeleton = sk_morph.skeletonize(mask).astype(np.uint8)
-        pruned_skeleton, body_length = prune_skeleton(skeleton)
+        pruned_skeleton, body_length = prune_skeleton(skeleton, mask)
+        # body_skeleton, body_length = extend_skeleton(pruned_skeleton, body_length, mask)
 
-        body_measurements.append([larva_direction, body_area, body_pos_x, body_pos_y, pruned_skeleton, body_length])
+        body_skeleton = pruned_skeleton
+
+        body_measurements.append([larva_direction, body_area, body_pos_x, body_pos_y, body_skeleton, body_length])
 
     return body_measurements
 
 
-def prune_skeleton(skeleton):
+def prune_skeleton(skeleton, mask) -> [np.ndarray, float]:
     fil = FilFinder2D(skeleton, distance=250 * u.pc, mask=skeleton)
     fil.preprocess_image(skip_flatten=True)
     fil.create_mask(use_existing_mask=True)
@@ -239,6 +245,43 @@ def prune_skeleton(skeleton):
 
     pruned_skeleton = fil.skeleton_longpath
     length = fil.lengths(u.pix)[0].to_value()
+
+    # Calculate the mean vectors of the ends of the skeleton
+    skel_pos = fil.branch_properties['pixels'][0][0]
+    skel_gradient = np.gradient(skel_pos, axis=0)
+
+    start_grad = np.mean(skel_gradient[0:10][:, 0]), np.mean(skel_gradient[0:10][:, 1])
+    end_grad = np.mean(skel_gradient[-11:-1][:, 0]), np.mean(skel_gradient[-11:-1][:, 1])
+
+    # slope_start, _, _, _, _ = linregress(skel_pos[0:20])
+    # slope_end, _, _, _, _ = linregress(skel_pos[-21:-1])
+    # start_grad = np.nan_to_num(np.array([1, 1 / slope_start], dtype='float64'))
+    # end_grad = np.nan_to_num(np.array([1, 1 / slope_end], dtype='float64'))
+
+    # Extend the skeleton from both ends in the direction it was headed until we reach the end of the body mask
+    start_pos = np.array(fil.end_pts[0][0], dtype='float64')
+    curr_pos = start_pos.copy()
+    inside_mask = 1
+    while inside_mask:
+        curr_pos -= start_grad
+        round_pos = np.round(curr_pos).astype(np.int64)
+        inside_mask = mask[round_pos[0], round_pos[1]]
+        if inside_mask:
+            pruned_skeleton[round_pos[0], round_pos[1]] = 1
+        else:
+            length += np.linalg.norm(curr_pos - start_pos)
+
+    end_pos = np.array(fil.end_pts[0][1], dtype='float64')
+    curr_pos = end_pos.copy()
+    inside_mask = 1
+    while inside_mask:
+        curr_pos += end_grad
+        round_pos = np.round(curr_pos).astype(np.int64)
+        inside_mask = mask[round_pos[0], round_pos[1]]
+        if inside_mask:
+            pruned_skeleton[round_pos[0], round_pos[1]] = 1
+        else:
+            length += np.linalg.norm(curr_pos - end_pos)
 
     return pruned_skeleton, length
 # def prune_skeleton(skeleton):
@@ -298,11 +341,17 @@ def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray) -> list:
     for i in range(n):
         mask = yolk_masks[:, :, i]
         lbl = sk_morph.label(mask)
-        region_props = sk_measure.regionprops(lbl, cache=False)[0]
+        region_props = sk_measure.regionprops(lbl, cache=False)
 
-        yolk_area = region_props.area
-        yolk_pos_x = int(region_props.centroid[1] + ((region_props.bbox[3] - region_props.bbox[1]) / 2))
-        yolk_pos_y = int(region_props.centroid[0])
+        # We add up yolk areas and (more or less) average their position
+        yolk_area = yolk_pos_x = yolk_pos_y = 0
+        for region in region_props:
+            yolk_area += region.area
+            yolk_pos_x += int(region.centroid[1])
+            yolk_pos_y += int(region.centroid[0])
+
+        yolk_pos_x = int(yolk_pos_x / len(region_props) + ((region_props[0].bbox[3] - region_props[0].bbox[1]) / 2))
+        yolk_pos_y = int(yolk_pos_y / len(region_props))
 
         yolk_measurements.append([yolk_area, yolk_pos_x, yolk_pos_y])
 
@@ -354,6 +403,29 @@ def remove_overlapping_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np
     return new_body_idx
 
 
+def correct_yolk_masks(masks: np.ndarray, yolk_idx: np.ndarray) -> np.ndarray:
+    corrected_masks = masks.copy()
+    yolk_masks = masks[:, :, yolk_idx]
+    n = yolk_masks.shape[2]
+
+    for i in range(n):
+        mask = yolk_masks[:, :, i].squeeze()
+        lbl = sk_morph.label(mask)
+        region_props = sk_measure.regionprops(lbl, cache=False)
+
+        # Fill holes in yolk mask, but unlike with body masks we don't discard all but the largest region
+        # ...for now
+        new_mask = np.zeros((850, 2448), dtype=bool)
+        for yolk in region_props:
+            new_mask[yolk.bbox[0]:yolk.bbox[2], yolk.bbox[1]:yolk.bbox[3]] = yolk.filled_image
+
+        yolk_masks[:, :, i] = new_mask
+
+    corrected_masks[:, :, yolk_idx] = yolk_masks
+
+    return corrected_masks
+
+
 # %%
 def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarray]:
     body_idx = eye_idx = yolk_idx = np.array([False] * class_ids.size)
@@ -392,6 +464,8 @@ def main() -> None:
 
                 masks = correct_body_masks(masks, body_idx)
                 body_idx = remove_overlapping_body_masks(masks, body_idx)
+                masks = correct_yolk_masks(masks, yolk_idx)
+
                 body_measurements = measure_body(masks, body_idx)
                 yolk_measurements = measure_yolk(masks, yolk_idx)
                 min_eye_diameters = measure_eyes(masks, eye_idx)
