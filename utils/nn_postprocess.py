@@ -111,9 +111,8 @@ def draw_labels(im: np.ndarray, min_eye_diameters: list, body_measurements: list
 
 
 # %% RoIs
-def check_rois(class_ids: np.ndarray, rois: np.ndarray, im_width: int) -> [np.ndarray, np.ndarray, np.ndarray]:
-    body_idx, eye_idx, yolk_idx = get_idx_by_class(class_ids)
-
+def check_rois(body_idx: np.ndarray, eye_idx: np.ndarray, yolk_idx: np.ndarray, rois: np.ndarray, im_width: int)\
+               -> [np.ndarray, np.ndarray, np.ndarray]:
     # We check for eyes/yolks inside body roi FIRST, because even if we discard a body for crossing the image
     # boundaries the inner components might still be fine
     eye_idx = get_valid_inner_rois(rois, body_idx, eye_idx, im_width)
@@ -192,7 +191,7 @@ def measure_eyes(masks: np.ndarray, eye_idx: np.ndarray) -> list:
     return min_eye_diameters
 
 
-def measure_body(masks: np.ndarray, body_idx: np.ndarray):
+def measure_body(masks: np.ndarray, body_idx: np.ndarray) -> list:
     body_measurements = []
     body_masks = masks[:, :, body_idx].astype(np.uint8)
     n = body_masks.shape[2]
@@ -234,7 +233,7 @@ def measure_body(masks: np.ndarray, body_idx: np.ndarray):
     return body_measurements
 
 
-def prune_skeleton(skeleton, mask) -> [np.ndarray, float]:
+def prune_skeleton(skeleton, mask: np.ndarray) -> [np.ndarray, float]:
     fil = FilFinder2D(skeleton, distance=250 * u.pc, mask=skeleton)
     fil.preprocess_image(skip_flatten=True)
     fil.create_mask(use_existing_mask=True)
@@ -252,7 +251,7 @@ def prune_skeleton(skeleton, mask) -> [np.ndarray, float]:
     return pruned_skeleton, length
 
 
-def extend_skeleton(fil, mask):
+def extend_skeleton(fil, mask: np.ndarray) -> [np.ndarray, float]:
     pruned_skeleton = fil.skeleton_longpath
     h, w = pruned_skeleton.shape
     skel_extension = np.zeros((h, w))
@@ -272,7 +271,6 @@ def extend_skeleton(fil, mask):
     skel_gradient = np.gradient(skel_coords, axis=0)
     start_grad = np.array([np.mean(skel_gradient[0:10][:, 0]), np.mean(skel_gradient[0:10][:, 1])])
     end_grad = np.array([np.mean(skel_gradient[-11:-1][:, 0]), np.mean(skel_gradient[-11:-1][:, 1])])
-
 
     # Extend the skeleton from both ends in the direction it was headed until we reach the end of the body mask
     start_pos = np.array(fil.end_pts[0][0], dtype='float64')
@@ -301,7 +299,7 @@ def extend_skeleton(fil, mask):
                     min_length = line_length
                     line = temp_line
     skel_extension[line != 0] = 1
-    extra_length += line_length
+    extra_length += min_length
 
     end_pos = np.array(fil.end_pts[0][1], dtype='float64')
     min_length = 99999
@@ -326,55 +324,9 @@ def extend_skeleton(fil, mask):
                     min_length = line_length
                     line = temp_line
     skel_extension[line != 0] = 1
-    extra_length += line_length
+    extra_length += min_length
 
     return skel_extension, extra_length
-# def prune_skeleton(skeleton):
-#     # Endpoints
-#     endpoint1 = np.array(([-1, -1, -1],
-#                           [-1,  1, -1],
-#                           [-1,  1, -1]), dtype="int")
-#
-#     endpoint2 = np.array(([-1, -1, -1],
-#                           [-1,  1, -1],
-#                           [-1, -1,  1]), dtype="int")
-#
-#     endpoint3 = np.array(([-1, -1, -1],
-#                           [-1,  1,  1],
-#                           [-1, -1, -1]), dtype="int")
-#
-#     endpoint4 = np.array(([-1, -1,  1],
-#                           [-1,  1, -1],
-#                           [-1, -1, -1]), dtype="int")
-#
-#     endpoint5 = np.array(([-1,  1, -1],
-#                           [-1,  1, -1],
-#                           [-1, -1, -1]), dtype="int")
-#
-#     endpoint6 = np.array(([ 1, -1, -1],
-#                           [-1,  1, -1],
-#                           [-1, -1, -1]), dtype="int")
-#
-#     endpoint7 = np.array(([-1, -1, -1],
-#                           [ 1,  1, -1],
-#                           [-1, -1, -1]), dtype="int")
-#
-#     endpoint8 = np.array(([-1, -1, -1],
-#                           [-1,  1, -1],
-#                           [ 1, -1, -1]), dtype="int")
-#
-#     ep1 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint1)
-#     ep2 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint2)
-#     ep3 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint3)
-#     ep4 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint4)
-#     ep5 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint5)
-#     ep6 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint6)
-#     ep7 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint7)
-#     ep8 = cv.morphologyEx(skeleton, cv.MORPH_HITMISS, endpoint8)
-#
-#     pruned_skeleton = ep1 + ep2 + ep3 + ep4 + ep5 + ep6 + ep7 + ep8
-#
-#     return pruned_skeleton
 
 
 def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray) -> list:
@@ -404,10 +356,93 @@ def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray) -> list:
 
 
 # %%
+def build_fish_associations(masks: np.ndarray, body_idx: np.ndarray, eye_idx: np.ndarray, yolk_idx: np.ndarray) \
+                            -> np.ndarray:
+    """
+    We build an array of the same shape as the index arrays (body_idx, eye_idx, yolk_idx) where each element is:
+        if it matches a body, a list of the indices of eyes and yolks that body contains
+        if it matches an eye or a yolk, the index of the body containing that eye or yolk.
+    If a body cointains no other parts it will have an empty list, if a part belongs to no body its index will be None.
+    """
+    n = body_idx.size
+    # Portion of the part that has to be inside the body to be counted
+    eye_threshold = yolk_threshold = 0.8
+
+    fish = np.empty((n), dtype=np.object)
+    for i in range(n):
+        if body_idx[i]:
+            fish[i] = []
+            body_mask = masks[:, :, i].squeeze()
+            # We treate eyes and yolks the same at the moment so could combine these two if statements, but could be
+            # that at some point we'll want to treat them differently, different thresholds for instance
+            for j in range(n):
+                if eye_idx[j]:
+                    eye_mask = masks[:, :, j].squeeze()
+                    eye_pixels = np.sum(eye_mask)
+                    overlapping_pixels = np.sum(body_mask * eye_mask)
+                    if overlapping_pixels / eye_pixels > eye_threshold:
+                        fish[i].append(j)
+                        fish[j] = i
+                elif yolk_idx[j]:
+                    yolk_mask = masks[:, :, j].squeeze()
+                    yolk_pixels = np.sum(yolk_mask)
+                    overlapping_pixels = np.sum(body_mask * yolk_mask)
+                    if overlapping_pixels / yolk_pixels > yolk_threshold:
+                        fish[i].append(j)
+                        fish[j] = i
+
+    return fish
+
+
+def remove_orphans(fish: np.ndarray, body_idx: np.ndarray, eye_idx: np.ndarray, yolk_idx: np.ndarray) \
+                   -> [np.ndarray, np.ndarray, np.ndarray]:
+    """
+        We remove orphan body parts *after* correcting masks but *before* doing overlap and image edge checks.
+        This is because while we want masks to be accurate, we might for instance include eyes that we know had
+        an associated body, even if that body was removed for crossing an image edge.
+    """
+    for f, T in enumerate(body_idx):
+        if T:
+            body_contents = fish[f]
+            # Remove bodies that contain nothing
+            if len(body_contents) == 0:
+                body_idx[f] = False
+            else:
+                eyes = eye_idx[body_contents]
+                n_eyes = np.sum(eyes)
+                # Remove bodies with no eyes
+                if n_eyes == 0:
+                    body_idx[f] = False
+                # Fish should have at most 2 eyes. If more, deal with that
+                elif n_eyes > 2:
+                    pass
+                yolks = yolk_idx[body_contents]
+                n_yolks = np.sum(yolks)
+                # Fish should have at most 1 yolk. If more, deal with that
+                if n_yolks > 1:
+                    pass
+
+    # Remove eyes and yolks lacking a corresponding body
+    for e, T in enumerate(eye_idx):
+        if T:
+            body = fish[e]
+            if body is None:
+                eye_idx[e] = False
+    for y, T in enumerate(yolk_idx):
+        if T:
+            body = fish[y]
+            if body is None:
+                yolk_idx[y] = False
+
+    return body_idx, eye_idx, yolk_idx
+
+
+# %% Mask correction
 def correct_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np.ndarray:
+    """ Discard all but largest region of each body mask and fill in holes."""
     corrected_masks = masks.copy()
     body_masks = masks[:, :, body_idx]
-    n = body_masks.shape[2]
+    h, w, n = body_masks.shape
 
     for i in range(n):
         mask = body_masks[:, :, i].squeeze()
@@ -419,7 +454,7 @@ def correct_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np.ndarray:
         largest_region_idx = areas.argmax()
         body = region_props[largest_region_idx]
 
-        new_mask = np.zeros((850, 2448), dtype=bool)
+        new_mask = np.zeros((h, w), dtype=bool)
         new_mask[body.bbox[0]:body.bbox[2], body.bbox[1]:body.bbox[3]] = body.filled_image
 
         body_masks[:, :, i] = new_mask
@@ -429,29 +464,35 @@ def correct_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np.ndarray:
     return corrected_masks
 
 
-def remove_overlapping_body_masks(masks: np.ndarray, body_idx: np.ndarray) -> np.ndarray:
-    new_body_idx = body_idx.copy()
-    if np.sum(body_idx) <= 1:
-        return body_idx
+def correct_eye_masks(masks: np.ndarray, eye_idx: np.ndarray) -> np.ndarray:
+    corrected_masks = masks.copy()
+    eye_masks = masks[:, :, eye_idx]
+    h, w, n = eye_masks.shape
 
-    body_idx_n = [j for j in range(body_idx.size) if body_idx[j]]
-    body_masks = [masks[:, :, i] for i in body_idx_n]
+    for i in range(n):
+        mask = eye_masks[:, :, i].squeeze()
+        lbl = sk_morph.label(mask)
+        region_props = sk_measure.regionprops(lbl, cache=False)
 
-    for i, mask_1 in enumerate(body_masks):
-        for j, mask_2 in enumerate(body_masks):
-            if i != j:
-                intersection = mask_1 * mask_2
-                if np.any(intersection):
-                    new_body_idx[body_idx_n[i]] = False
-                    new_body_idx[body_idx_n[j]] = False
+        # Find the largest region and take that, filled in, as the body mask - assume other regions are artefacts
+        areas = np.array([region.area for region in region_props])
+        largest_region_idx = areas.argmax()
+        eye = region_props[largest_region_idx]
 
-    return new_body_idx
+        new_mask = np.zeros((h, w), dtype=bool)
+        new_mask[eye.bbox[0]:eye.bbox[2], eye.bbox[1]:eye.bbox[3]] = eye.filled_image
+
+        eye_masks[:, :, i] = new_mask
+
+    corrected_masks[:, :, eye_idx] = eye_masks
+
+    return corrected_masks
 
 
 def correct_yolk_masks(masks: np.ndarray, yolk_idx: np.ndarray) -> np.ndarray:
     corrected_masks = masks.copy()
     yolk_masks = masks[:, :, yolk_idx]
-    n = yolk_masks.shape[2]
+    h, w, n = yolk_masks.shape
 
     for i in range(n):
         mask = yolk_masks[:, :, i].squeeze()
@@ -460,7 +501,7 @@ def correct_yolk_masks(masks: np.ndarray, yolk_idx: np.ndarray) -> np.ndarray:
 
         # Fill holes in yolk mask, but unlike with body masks we don't discard all but the largest region
         # ...for now
-        new_mask = np.zeros((850, 2448), dtype=bool)
+        new_mask = np.zeros((h, w), dtype=bool)
         for yolk in region_props:
             new_mask[yolk.bbox[0]:yolk.bbox[2], yolk.bbox[1]:yolk.bbox[3]] = yolk.filled_image
 
@@ -471,9 +512,28 @@ def correct_yolk_masks(masks: np.ndarray, yolk_idx: np.ndarray) -> np.ndarray:
     return corrected_masks
 
 
+def remove_overlapping_masks(masks: np.ndarray, idx: np.ndarray) -> np.ndarray:
+    new_idx = idx.copy()
+    if np.sum(idx) <= 1:
+        return idx
+
+    idx_n = [j for j in range(idx.size) if idx[j]]
+    chosen_masks = [masks[:, :, i] for i in idx_n]
+
+    for i, mask_1 in enumerate(chosen_masks):
+        for j, mask_2 in enumerate(chosen_masks):
+            if i != j:
+                intersection = mask_1 * mask_2
+                if np.any(intersection):
+                    new_idx[idx_n[i]] = False
+                    new_idx[idx_n[j]] = False
+
+    return new_idx
+
+
 # %%
 def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarray]:
-    body_idx = eye_idx = yolk_idx = np.array([False] * class_ids.size)
+    body_idx = eye_idx = yolk_idx = np.array([False] * class_ids.size, dtype=np.bool)
     if 2 in class_ids:
         body_idx = (class_ids == 2)
     if 3 in class_ids:
@@ -502,15 +562,21 @@ def main() -> None:
         rois = nn_output['rois']
         masks = nn_output['masks']
 
-        body_idx, eye_idx, yolk_idx = check_rois(class_ids, rois, w)
+        body_idx, eye_idx, yolk_idx = get_idx_by_class(class_ids)
 
-        if np.any(body_idx):
-            if np.any(eye_idx):
+        if np.any(body_idx) and np.any(eye_idx):
+            masks = correct_body_masks(masks, body_idx)
+            masks = correct_eye_masks(masks, body_idx)
+            masks = correct_yolk_masks(masks, yolk_idx)
+            fish = build_fish_associations(masks, body_idx, eye_idx, yolk_idx)
+            body_idx, eye_idx, yolk_idx = remove_orphans(fish, body_idx, eye_idx, yolk_idx)
+            body_idx, eye_idx, yolk_idx = check_rois(body_idx, eye_idx, yolk_idx, rois, w)
 
-                masks = correct_body_masks(masks, body_idx)
-                body_idx = remove_overlapping_body_masks(masks, body_idx)
-                masks = correct_yolk_masks(masks, yolk_idx)
+            body_idx = remove_overlapping_masks(masks, body_idx)
+            eye_idx = remove_overlapping_masks(masks, eye_idx)
 
+            # Check that we still have anything left to measure at this point!
+            if np.any(body_idx) or np.any(eye_idx):
                 body_measurements = measure_body(masks, body_idx)
                 yolk_measurements = measure_yolk(masks, yolk_idx)
                 min_eye_diameters = measure_eyes(masks, eye_idx)
