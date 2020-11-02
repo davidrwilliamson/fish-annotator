@@ -8,8 +8,6 @@ from skimage import morphology as sk_morph
 from skimage import measure as sk_measure
 from skimage import transform as sk_transform
 
-from scipy.stats import linregress
-
 """
 TODO:
     Each body should contain at least one and no more than two eyes
@@ -246,44 +244,91 @@ def prune_skeleton(skeleton, mask) -> [np.ndarray, float]:
     pruned_skeleton = fil.skeleton_longpath
     length = fil.lengths(u.pix)[0].to_value()
 
-    # Calculate the mean vectors of the ends of the skeleton
-    skel_pos = fil.branch_properties['pixels'][0][0]
-    skel_gradient = np.gradient(skel_pos, axis=0)
+    skel_extension, extra_length = extend_skeleton(fil, mask)
 
-    start_grad = np.mean(skel_gradient[0:10][:, 0]), np.mean(skel_gradient[0:10][:, 1])
-    end_grad = np.mean(skel_gradient[-11:-1][:, 0]), np.mean(skel_gradient[-11:-1][:, 1])
+    pruned_skeleton[skel_extension != 0] = 1
+    length += extra_length
 
-    # slope_start, _, _, _, _ = linregress(skel_pos[0:20])
-    # slope_end, _, _, _, _ = linregress(skel_pos[-21:-1])
-    # start_grad = np.nan_to_num(np.array([1, 1 / slope_start], dtype='float64'))
-    # end_grad = np.nan_to_num(np.array([1, 1 / slope_end], dtype='float64'))
+    return pruned_skeleton, length
+
+
+def extend_skeleton(fil, mask):
+    pruned_skeleton = fil.skeleton_longpath
+    h, w = pruned_skeleton.shape
+    skel_extension = np.zeros((h, w))
+    extra_length = 0
+
+    # Build a list of coordinates of the skeleton
+    # I don't trust fil.branch_properties['pixels'][0][0] for this as it doesn't seem to match the claimed offset
+    skel_coords = np.nonzero(pruned_skeleton)
+    skel_coords = zip(skel_coords[0], skel_coords[1])
+    skel_coords = np.array([c for c in skel_coords])
+
+    # We want to get the direction the skeleton is more or less headed in at its ends
+    # Tried various methods for this such as np.mean(np.diff(skel_coords[0:10, :], axis=0), axis=0)) and
+    # slope_start, _, _, _, _ = scipy.stats.linregress(skel_coords[0:10])
+    # start_grad = np.nan_to_num(np.array([1 / slope_start, 1], dtype='float64'))
+    # They all seemed to work about the same and lingress gives us nasty NaN and near-inf outputs
+    skel_gradient = np.gradient(skel_coords, axis=0)
+    start_grad = np.array([np.mean(skel_gradient[0:10][:, 0]), np.mean(skel_gradient[0:10][:, 1])])
+    end_grad = np.array([np.mean(skel_gradient[-11:-1][:, 0]), np.mean(skel_gradient[-11:-1][:, 1])])
+
 
     # Extend the skeleton from both ends in the direction it was headed until we reach the end of the body mask
     start_pos = np.array(fil.end_pts[0][0], dtype='float64')
-    curr_pos = start_pos.copy()
-    inside_mask = 1
-    while inside_mask:
-        curr_pos -= start_grad
-        round_pos = np.round(curr_pos).astype(np.int64)
-        inside_mask = mask[round_pos[0], round_pos[1]]
-        if inside_mask:
-            pruned_skeleton[round_pos[0], round_pos[1]] = 1
-        else:
-            length += np.linalg.norm(curr_pos - start_pos)
+    min_length = 99999
+    line = np.zeros((h, w))
+    # It's pretty gross to try all four possible directions, but we don't know which end is which (left/right)
+    # We check the distance to the mask edge for each case and choose the shortest
+    # It's not perfect but the difference shouldn't be too much
+    for direction in [start_grad, -start_grad, [start_grad[0], -start_grad[1]], [-start_grad[0], start_grad[1]]]:
+        curr_pos = start_pos.copy()
+        inside_mask = True
+        temp_line = np.zeros((h, w))
+        while inside_mask:
+            curr_pos += direction
+            round_pos = np.round(curr_pos).astype(np.int64)
+            # Check that we aren't going off the edge of the image
+            if (round_pos != round_pos.clip([0, 0], [h, w])).any():
+                inside_mask = False
+                break
+            inside_mask = mask[round_pos[0], round_pos[1]]
+            if inside_mask:
+                temp_line[round_pos[0], round_pos[1]] = 1
+            else:
+                line_length = np.linalg.norm(round_pos - start_pos)
+                if line_length < min_length:
+                    min_length = line_length
+                    line = temp_line
+    skel_extension[line != 0] = 1
+    extra_length += line_length
 
     end_pos = np.array(fil.end_pts[0][1], dtype='float64')
-    curr_pos = end_pos.copy()
-    inside_mask = 1
-    while inside_mask:
-        curr_pos += end_grad
-        round_pos = np.round(curr_pos).astype(np.int64)
-        inside_mask = mask[round_pos[0], round_pos[1]]
-        if inside_mask:
-            pruned_skeleton[round_pos[0], round_pos[1]] = 1
-        else:
-            length += np.linalg.norm(curr_pos - end_pos)
+    min_length = 99999
+    line = np.zeros((h, w))
+    for direction in [end_grad, -end_grad, [end_grad[0], -end_grad[1]], [-end_grad[0], end_grad[1]]]:
+        curr_pos = end_pos.copy()
+        inside_mask = True
+        temp_line = np.zeros((h, w))
+        while inside_mask:
+            curr_pos += direction
+            round_pos = np.round(curr_pos).astype(np.int64)
+            # Check that we aren't going off the edge of the image
+            if (round_pos != round_pos.clip([0, 0], [h, w])).any():
+                inside_mask = False
+                break
+            inside_mask = mask[round_pos[0], round_pos[1]]
+            if inside_mask:
+                temp_line[round_pos[0], round_pos[1]] = 1
+            else:
+                line_length = np.linalg.norm(round_pos - end_pos)
+                if line_length < min_length:
+                    min_length = line_length
+                    line = temp_line
+    skel_extension[line != 0] = 1
+    extra_length += line_length
 
-    return pruned_skeleton, length
+    return skel_extension, extra_length
 # def prune_skeleton(skeleton):
 #     # Endpoints
 #     endpoint1 = np.array(([-1, -1, -1],
