@@ -18,8 +18,8 @@ TODO:
 """
 
 # output_folder = '/home/dave/Desktop/bernard_test/'
-output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-ctrl/'
-image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-ctrl/'
+nn_output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-2,50/'
+image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-2,50/'
 
 
 def load_image(f: str) -> np.ndarray:
@@ -73,8 +73,8 @@ def draw_masks(im: np.ndarray, masks: np.ndarray, body_idx: np.ndarray, eye_idx:
     return im
 
 
-def draw_labels(im: np.ndarray, min_eye_diameters: list, body_measurements: list, yolk_measurements: list,
-                scale: float) -> np.ndarray:
+def draw_labels(im: np.ndarray, eye_measurements: list, body_measurements: list, yolk_measurements: list,
+                fish_parts: np.ndarray) -> np.ndarray:
     font = cv.FONT_HERSHEY_PLAIN
     font_size = 2
     line_weight = 2
@@ -82,32 +82,110 @@ def draw_labels(im: np.ndarray, min_eye_diameters: list, body_measurements: list
     padding_h = 0
     padding_w = 10
 
-    for fish in min_eye_diameters:
-        for eye in fish:
-            diameter, pos_x, pos_y = eye[0], eye[1] + padding_w, eye[2] + padding_h
-            im = cv.putText(im, '{:0.3f}mm'.format(diameter / scale), (pos_x, pos_y),
-                            font, font_size, (255, 0, 0), line_weight, cv.LINE_AA)
+    for fish in eye_measurements:
+        if fish:
+            for eye in fish:
+                min_diameter, max_diameter, area, pos_x, pos_y = \
+                    eye['Eye min diameter[mm]'], eye['Eye max diameter[mm]'], eye['Eye area[mm2]'], \
+                    eye['Eye pos[px]'][0] + padding_w, eye['Eye pos[px]'][1] + padding_h
+                im = cv.putText(im, '{:0.3f}mm'.format(min_diameter), (pos_x, pos_y),
+                                font, font_size, (255, 0, 0), line_weight, cv.LINE_AA)
 
-    for fish, _ in enumerate(body_measurements):
-        direction, area, pos_x, pos_y, skeleton, length = body_measurements[fish][0], body_measurements[fish][1],\
-                                        body_measurements[fish][2] + padding_w, body_measurements[fish][3] + padding_h,\
-                                        body_measurements[fish][4], body_measurements[fish][5]
-        im = cv.putText(im, '{}'.format(direction),
-                        (pos_x, pos_y), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
-        dy = int(cv.getTextSize('{}'.format(direction), font, font_size, line_weight)[1] * 2.5)
-        im = cv.putText(im, 'Area: {:0.3f}mm^2'.format(area / (scale * scale)),
-                        (pos_x, pos_y + dy), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
-        im = cv.putText(im, 'Length: {:0.3f}mm'.format(length / scale),
-                        (pos_x - 50, pos_y - 70), font, font_size, (63, 192, 192), line_weight, cv.LINE_AA)
+    for fish in body_measurements:
+        if fish:
+            direction, area, pos_x, pos_y, skeleton, length = \
+                    fish['Facing direction'], fish['Body area[mm2]'], \
+                    fish['Body pos[px]'][0] + padding_w, fish['Body pos[px]'][1] + padding_h, fish['Body skeleton'], \
+                    fish['Myotome length[mm]']
+            im = cv.putText(im, '{}'.format(direction),
+                            (pos_x, pos_y), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
+            dy = int(cv.getTextSize('{}'.format(direction), font, font_size, line_weight)[1] * 2.5)
+            im = cv.putText(im, 'Area: {:0.3f}mm2'.format(area),
+                            (pos_x, pos_y + dy), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
+            im = cv.putText(im, 'Length: {:0.3f}mm'.format(length),
+                            (pos_x - 50, pos_y - 70), font, font_size, (63, 192, 192), line_weight, cv.LINE_AA)
 
-        im[skeleton != 0] = (0, 255, 255)
+            im[skeleton != 0] = (0, 255, 255)
 
-    for fish, _ in enumerate(yolk_measurements):
-        area, pos_x, pos_y = yolk_measurements[fish][0], yolk_measurements[fish][1] + padding_w, yolk_measurements[fish][2] + padding_h
-        im = cv.putText(im, '{:0.3f}mm^2'.format(area / (scale * scale)),
-                        (pos_x, pos_y), font, font_size, (0, 127, 0), line_weight, cv.LINE_AA)
+    for fish in yolk_measurements:
+        if fish:
+            area, pos_x, pos_y = fish['Yolk area[mm2]'], \
+                                 fish['Yolk pos[px]'][0] + padding_w, fish['Yolk pos[px]'][1] + padding_h
+            im = cv.putText(im, '{:0.3f}mm2'.format(area),
+                            (pos_x, pos_y), font, font_size, (0, 127, 0), line_weight, cv.LINE_AA)
 
     return im
+
+
+# %% Write output
+def write_cod_csv_header(log_path: str) -> None:
+    csv_header = 'Image ID,Date,Treatment,Dev.,Fish ID,' \
+                 'Body area[mm2],Myotome length[mm],Myotome height[mm]' \
+                 'Eye area[mm2],Eye min diameter[mm],Eye max diameter[mm],' \
+                 'Yolk area[mm2],Yolk length[mm],Yolk height[mm],Yolk fraction' \
+                 '\r\n'
+
+    with open(log_path, 'a+') as log_file:
+        log_file.write(csv_header)
+
+
+def write_frame_to_csv(log_path: str, file_name: str, fish: np.ndarray, body_measurements, eye_measurements, yolk_measurements, body_idx, eye_idx, yolk_idx):
+    folder_split = nn_output_folder.split('/')
+    treatment = folder_split[-2]
+    date = folder_split[-3]
+    dev_stage = 'Larvae'
+
+    fish_num = 0
+
+    # Right now we're going to skip writing eyes and yolks that are not associated with a valid body
+    # Need to find a way to track bodies that we got rid of earlier and associate these parts with those bodies
+    for n, body in enumerate(body_measurements):
+        if body:
+            eyes = [eye_measurements[part] for part in fish[n] if eye_measurements[part]]
+            yolk = [yolk_measurements[part] for part in fish[n] if yolk_measurements[part]]
+            if len(yolk) == 0:
+                yolk = None
+            else:
+                yolk = yolk[0]
+            if len(eyes) == 1:
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, body, eyes[0][0], yolk)
+            elif len(eyes) == 2:
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, body, eyes[0][0], yolk)
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, None, eyes[1][0], None)
+
+            fish_num += 1
+
+
+def write_fish_to_csv(log_path: str, file_name: str, date: str, treatment: str, dev_stage: str, fish_num: int,
+                      body_measurements: dict, eye_measurements: dict, yolk_measurements: dict) \
+        -> None:
+
+    with open(log_path, 'a+') as log_file:
+        log_file.write('{},{},{},{},{:d},'.format(
+                       file_name, date, treatment, dev_stage, fish_num,))
+        if body_measurements:
+            log_file.write('{:0.4f},{:0.4f},{:0.4f},'.format(
+                       body_measurements['Body area[mm2]'],
+                       body_measurements['Myotome length[mm]'],
+                       body_measurements['Myotome height[mm]']))
+        else:
+            log_file.write(',,,')
+        if eye_measurements:
+            log_file.write('{:0.4f},{:0.4f},{:0.4f},'.format(
+                       eye_measurements['Eye area[mm2]'],
+                       eye_measurements['Eye min diameter[mm]'],
+                       eye_measurements['Eye max diameter[mm]']))
+        else:
+            log_file.write(',,,')
+        if yolk_measurements:
+            log_file.write('{:0.4f},{:0.4f},{:0.4f},{:0.4f}'.format(
+                       yolk_measurements['Yolk area[mm2]'],
+                       yolk_measurements['Yolk length[mm]'],
+                       yolk_measurements['Yolk height[mm]'],
+                       yolk_measurements['Yolk area[mm2]'] / body_measurements['Body area[mm2]']))
+        else:
+            log_file.write(',,,')
+        log_file.write('\r\n')
 
 
 # %% RoIs
@@ -162,73 +240,83 @@ def get_valid_inner_rois(rois: np.ndarray, body_idx: np.ndarray, inner_idx: np.n
 
 
 # %% Measurements
-def measure_eyes(masks: np.ndarray, eye_idx: np.ndarray) -> list:
-    min_eye_diameters = []
+def measure_eyes(masks: np.ndarray, eye_idx: np.ndarray, scale: float) -> list:
+    eye_measurements = [None] * eye_idx.size
 
-    eye_masks = masks[:, :, eye_idx].astype(np.uint8)
-    n = eye_masks.shape[2]
+    for i in range(len(eye_idx)):
+        if eye_idx[i]:
+            mask = masks[:, :, i].astype(np.uint8).squeeze()
+            lbl = sk_morph.label(mask > 0)
+            region_props = sk_measure.regionprops(lbl, cache=False)
 
-    for i in range(n):
-        mask = eye_masks[:, :, i].squeeze()
-        lbl = sk_morph.label(mask > 0)
-        region_props = sk_measure.regionprops(lbl, cache=False)
+            temp_measurements = []
+            for region in region_props:
+                max_eye_diameter = region.major_axis_length / scale
+                eye_area = region.area / (scale * scale)
+                # We take the minimum diameter of the convex hull of the eye because of cases where we have figure 8 eyes
+                convex_hull = region.convex_image.astype(np.uint8)
+                hull_props = sk_measure.regionprops(convex_hull)
+                min_eye_diameter = hull_props[0].minor_axis_length / scale
 
-        temp_eye_diameters = []
-        for region in region_props:
-            binary_image = region.image.astype(np.uint8)
-            # We take the minimum diameter of the convex hull of the eye because of cases where we have figure 8 eyes
-            convex_hull = region.convex_image.astype(np.uint8)
-            hull_props = sk_measure.regionprops(convex_hull)
-            min_eye_diameter = hull_props[0].minor_axis_length
-            # Eye centroid in image space with offset in x for placing eye labels
-            eye_pos_x = int(hull_props[0].centroid[1] + (hull_props[0].bbox[3] / 2) + region.bbox[1])
-            eye_pos_y = int(hull_props[0].centroid[0] + region.bbox[0])
+                # Eye centroid in image space with offset in x for placing eye labels
+                eye_pos = (int(hull_props[0].centroid[1] + (hull_props[0].bbox[3] / 2) + region.bbox[1]),
+                                            int(hull_props[0].centroid[0] + region.bbox[0]))
 
-            temp_eye_diameters.append([min_eye_diameter, eye_pos_x, eye_pos_y])
+                temp_measurements.append({'Eye max diameter[mm]': max_eye_diameter,
+                                          'Eye min diameter[mm]': min_eye_diameter,
+                                          'Eye area[mm2]': eye_area,
+                                          'Eye pos[px]': eye_pos})
 
-        min_eye_diameters.append(temp_eye_diameters)
+            eye_measurements[i] = temp_measurements
 
-    return min_eye_diameters
+    return eye_measurements
 
 
-def measure_body(masks: np.ndarray, body_idx: np.ndarray) -> list:
-    body_measurements = []
-    body_masks = masks[:, :, body_idx].astype(np.uint8)
-    n = body_masks.shape[2]
+def measure_body(masks: np.ndarray, body_idx: np.ndarray, scale: float) -> list:
+    body_measurements = [None] * body_idx.size
 
-    for i in range(n):
-        mask = body_masks[:, :, i]
-        lbl = sk_morph.label(mask)
-        region_props = sk_measure.regionprops(lbl, cache=False)[0]
+    for i in range(len(body_idx)):
+        if body_idx[i]:
+            mask = masks[:, :, i].astype(np.uint8)
+            lbl = sk_morph.label(mask)
+            region_props = sk_measure.regionprops(lbl, cache=False)[0]
 
-        body_area = region_props.area
-        body_pos_x = int(region_props.centroid[1])
-        body_pos_y = int(region_props.centroid[0])
+            body_area = region_props.area / (scale * scale)
+            body_pos = (int(region_props.centroid[1]), int(region_props.centroid[0]))
 
-        # Find the end of the fish that is "heavier" - this should be the head end
-        # Obviously won't work for C shaped fish, though...
-        body_sum = np.sum(mask, axis=0)
-        body_diff = np.abs(np.diff(body_sum))
+            # Find the end of the fish that is "heavier" - this should be the head end
+            # Obviously won't work for C shaped fish, though...
+            body_sum = np.sum(mask, axis=0)
+            body_diff = np.abs(np.diff(body_sum))
 
-        body_start = region_props.bbox[1]  # (body_sum != 0).argmax()
-        body_stop = region_props.bbox[3]  # 2448 - (np.flip(body_sum) != 0).argmax()
-        body_center = body_start + (body_stop - body_start) / 2
-        left_body_sum = np.sum(body_sum[0:int(body_center)])
-        right_body_sum = np.sum(body_sum[int(body_center): body_stop])
+            body_start = region_props.bbox[1]  # (body_sum != 0).argmax()
+            body_stop = region_props.bbox[3]  # 2448 - (np.flip(body_sum) != 0).argmax()
+            body_center = body_start + (body_stop - body_start) / 2
+            left_body_sum = np.sum(body_sum[0:int(body_center)])
+            right_body_sum = np.sum(body_sum[int(body_center): body_stop])
 
-        if left_body_sum > right_body_sum:
-            larva_direction = '<-'
-        else:
-            larva_direction = '->'
+            if left_body_sum > right_body_sum:
+                larva_direction = '<-'
+            else:
+                larva_direction = '->'
 
-        # Myotome length
-        skeleton = sk_morph.skeletonize(mask).astype(np.uint8)
-        pruned_skeleton, body_length = prune_skeleton(skeleton, mask)
-        # body_skeleton, body_length = extend_skeleton(pruned_skeleton, body_length, mask)
+            # Myotome length
+            skeleton = sk_morph.skeletonize(mask).astype(np.uint8)
+            pruned_skeleton, body_length = prune_skeleton(skeleton, mask)
+            body_length /= scale
+            # body_skeleton, body_length = extend_skeleton(pruned_skeleton, body_length, mask)
 
-        body_skeleton = pruned_skeleton
+            body_skeleton = pruned_skeleton
 
-        body_measurements.append([larva_direction, body_area, body_pos_x, body_pos_y, body_skeleton, body_length])
+            # Myotome height
+            body_height = np.nan
+
+            body_measurements[i] = {'Body area[mm2]': body_area,
+                                    'Myotome length[mm]': body_length,
+                                    'Myotome height[mm]': body_height,
+                                    'Facing direction': larva_direction,
+                                    'Body skeleton': body_skeleton,
+                                    'Body pos[px]': body_pos}
 
     return body_measurements
 
@@ -329,28 +417,30 @@ def extend_skeleton(fil, mask: np.ndarray) -> [np.ndarray, float]:
     return skel_extension, extra_length
 
 
-def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray) -> list:
-    yolk_measurements = []
+def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray, scale: float) -> list:
+    yolk_measurements = [None] * yolk_idx.size
 
-    yolk_masks = masks[:, :, yolk_idx].astype(np.uint8)
-    n = yolk_masks.shape[2]
+    for i in range(len(yolk_idx)):
+        if yolk_idx[i]:
+            mask = masks[:, :, i].astype(np.uint8)
+            lbl = sk_morph.label(mask)
+            region_props = sk_measure.regionprops(lbl, cache=False)
 
-    for i in range(n):
-        mask = yolk_masks[:, :, i]
-        lbl = sk_morph.label(mask)
-        region_props = sk_measure.regionprops(lbl, cache=False)
+            # We add up yolk areas and (more or less) average their position
+            yolk_area = yolk_pos_x = yolk_pos_y = 0
+            for region in region_props:
+                yolk_area += region.area
+                yolk_pos_x += int(region.centroid[1])
+                yolk_pos_y += int(region.centroid[0])
+            yolk_area /= (scale * scale)
 
-        # We add up yolk areas and (more or less) average their position
-        yolk_area = yolk_pos_x = yolk_pos_y = 0
-        for region in region_props:
-            yolk_area += region.area
-            yolk_pos_x += int(region.centroid[1])
-            yolk_pos_y += int(region.centroid[0])
+            yolk_pos = (int(yolk_pos_x / len(region_props) + ((region_props[0].bbox[3] - region_props[0].bbox[1]) / 2)),
+                        int(yolk_pos_y / len(region_props)))
 
-        yolk_pos_x = int(yolk_pos_x / len(region_props) + ((region_props[0].bbox[3] - region_props[0].bbox[1]) / 2))
-        yolk_pos_y = int(yolk_pos_y / len(region_props))
-
-        yolk_measurements.append([yolk_area, yolk_pos_x, yolk_pos_y])
+            yolk_measurements[i] = {'Yolk area[mm2]': yolk_area,
+                                    'Yolk length[mm]': np.nan,
+                                    'Yolk height[mm]': np.nan,
+                                    'Yolk pos[px]': yolk_pos}
 
     return yolk_measurements
 
@@ -390,6 +480,7 @@ def build_fish_associations(masks: np.ndarray, body_idx: np.ndarray, eye_idx: np
                     if overlapping_pixels / yolk_pixels > yolk_threshold:
                         fish[i].append(j)
                         fish[j] = i
+            fish[i] = np.array(fish[i])
 
     return fish
 
@@ -547,15 +638,19 @@ def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarr
 # %% Main
 def main() -> None:
     scale = 287.0
-    files = [f for f in os.listdir(output_folder) if
-             (os.path.isfile(os.path.join(output_folder, f)) and os.path.splitext(f)[1] != '.csv')]
+    log_path = os.path.join(nn_output_folder, 'measurements_log.csv')
+
+    files = [f for f in os.listdir(nn_output_folder) if
+             (os.path.isfile(os.path.join(nn_output_folder, f)) and os.path.splitext(f)[1] != '.csv')]
     files.sort()
+
+    write_cod_csv_header(log_path)
 
     for f in files:
         im = load_image(f)
         h, w = im.shape[0:2]
 
-        with open(os.path.join(output_folder, f), 'rb') as file:
+        with open(os.path.join(nn_output_folder, f), 'rb') as file:
             nn_output = pickle.load(file)
 
         class_ids = nn_output['class_ids']
@@ -577,16 +672,19 @@ def main() -> None:
 
             # Check that we still have anything left to measure at this point!
             if np.any(body_idx) or np.any(eye_idx):
-                body_measurements = measure_body(masks, body_idx)
-                yolk_measurements = measure_yolk(masks, yolk_idx)
-                min_eye_diameters = measure_eyes(masks, eye_idx)
+                body_measurements = measure_body(masks, body_idx, scale)
+                eye_measurements = measure_eyes(masks, eye_idx, scale)
+                yolk_measurements = measure_yolk(masks, yolk_idx, scale)
 
                 # im = draw_rois(im, rois, body_idx, eye_idx, yolk_idx)
                 im = draw_masks(im, masks, body_idx, eye_idx, yolk_idx)
-                im = draw_labels(im, min_eye_diameters, body_measurements, yolk_measurements, scale)
+                im = draw_labels(im, eye_measurements, body_measurements, yolk_measurements, fish)
 
                 cv.imshow('Neural Network output', im)
                 cv.waitKey(0)
+
+                write_frame_to_csv(log_path, f, fish, body_measurements, eye_measurements, yolk_measurements,
+                               body_idx, eye_idx, yolk_idx)
 
 
 main()
