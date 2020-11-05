@@ -17,12 +17,7 @@ TODO:
     Label fish with corresponding body parts
 """
 
-# output_folder = '/home/dave/Desktop/bernard_test/'
-nn_output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-2,50/'
-image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-2,50/'
-
-
-def load_image(f: str) -> np.ndarray:
+def load_image(image_folder: str, f: str) -> np.ndarray:
     im = np.load(os.path.join(image_folder, f + '.silc')).astype(np.uint8).squeeze()
     im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
 
@@ -120,7 +115,7 @@ def draw_labels(im: np.ndarray, eye_measurements: list, body_measurements: list,
 # %% Write output
 def write_cod_csv_header(log_path: str) -> None:
     csv_header = 'Image ID,Date,Treatment,Dev.,Fish ID,' \
-                 'Body area[mm2],Myotome length[mm],Myotome height[mm]' \
+                 'Body area[mm2],Myotome length[mm],Myotome height[mm],' \
                  'Eye area[mm2],Eye min diameter[mm],Eye max diameter[mm],' \
                  'Yolk area[mm2],Yolk length[mm],Yolk height[mm],Yolk fraction' \
                  '\r\n'
@@ -129,31 +124,53 @@ def write_cod_csv_header(log_path: str) -> None:
         log_file.write(csv_header)
 
 
-def write_frame_to_csv(log_path: str, file_name: str, fish: np.ndarray, body_measurements, eye_measurements, yolk_measurements, body_idx, eye_idx, yolk_idx):
-    folder_split = nn_output_folder.split('/')
-    treatment = folder_split[-2]
-    date = folder_split[-3]
+def write_frame_to_csv(log_path: str, folder: str, file_name: str, fish: np.ndarray, body_measurements, eye_measurements, yolk_measurements, body_idx, eye_idx, yolk_idx):
+    folder_split = folder.split('/')
+    treatment = folder_split[-1]
+    date = folder_split[-2]
     dev_stage = 'Larvae'
 
-    fish_num = 0
-
-    # Right now we're going to skip writing eyes and yolks that are not associated with a valid body
-    # Need to find a way to track bodies that we got rid of earlier and associate these parts with those bodies
+    # Here we go through the valid bodies and all the parts connected to them, writing out their measurements
+    # Fish ID uses the internal number of the body (i.e., its position index) which is a bit messy but at least it
+    # should be unique to each body, doesn't require any extra counting or work, and makes it easy to go back and check
     for n, body in enumerate(body_measurements):
         if body:
             eyes = [eye_measurements[part] for part in fish[n] if eye_measurements[part]]
             yolk = [yolk_measurements[part] for part in fish[n] if yolk_measurements[part]]
+            fish_id = n
             if len(yolk) == 0:
                 yolk = None
             else:
                 yolk = yolk[0]
             if len(eyes) == 1:
-                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, body, eyes[0][0], yolk)
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_id, body, eyes[0][0], yolk)
             elif len(eyes) == 2:
-                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, body, eyes[0][0], yolk)
-                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_num, None, eyes[1][0], None)
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_id, body, eyes[0][0], yolk)
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_id, None, eyes[1][0], None)
 
-            fish_num += 1
+    # The above code only deals with parts that are connected to a body
+    # Here we find the eyes and yolks that have been orphaned by body removal (for instance overlapping or edge masks)
+    body_connected_parts = []
+    for n, part in enumerate(fish):
+        # If the part is a body
+        if type(part) == np.ndarray:
+            body_connected_parts.append(n)
+            # If the body is actually included in our measurements
+            if body_measurements[n]:
+                for p in part:
+                    body_connected_parts.append(p)
+    if len(body_connected_parts) < len(fish):
+        # Then some parts are not connected to a body
+        unconnected_parts = [f for f in range(len(fish)) if f not in body_connected_parts]
+        for p in unconnected_parts:
+            # We still have a body listed in fish, even if it isn't valid any more, so fish ID still works + is unique
+            fish_id = fish[p]
+            if eye_measurements[p]:
+                eye = eye_measurements[p]
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_id, None, eye[0], None)
+            elif yolk_measurements[p]:
+                yolk = yolk_measurements[p]
+                write_fish_to_csv(log_path, file_name, date, treatment, dev_stage, fish_id, None, None, yolk)
 
 
 def write_fish_to_csv(log_path: str, file_name: str, date: str, treatment: str, dev_stage: str, fish_num: int,
@@ -161,7 +178,7 @@ def write_fish_to_csv(log_path: str, file_name: str, date: str, treatment: str, 
         -> None:
 
     with open(log_path, 'a+') as log_file:
-        log_file.write('{},{},{},{},{:d},'.format(
+        log_file.write('{},{},"{}",{},{:d},'.format(
                        file_name, date, treatment, dev_stage, fish_num,))
         if body_measurements:
             log_file.write('{:0.4f},{:0.4f},{:0.4f},'.format(
@@ -178,11 +195,15 @@ def write_fish_to_csv(log_path: str, file_name: str, date: str, treatment: str, 
         else:
             log_file.write(',,,')
         if yolk_measurements:
+            if body_measurements:
+                yolk_fraction = yolk_measurements['Yolk area[mm2]'] / body_measurements['Body area[mm2]']
+            else:
+                yolk_fraction = np.nan
             log_file.write('{:0.4f},{:0.4f},{:0.4f},{:0.4f}'.format(
                        yolk_measurements['Yolk area[mm2]'],
                        yolk_measurements['Yolk length[mm]'],
                        yolk_measurements['Yolk height[mm]'],
-                       yolk_measurements['Yolk area[mm2]'] / body_measurements['Body area[mm2]']))
+                       yolk_fraction))
         else:
             log_file.write(',,,')
         log_file.write('\r\n')
@@ -329,6 +350,9 @@ def prune_skeleton(skeleton, mask: np.ndarray) -> [np.ndarray, float]:
     fil.analyze_skeletons(branch_thresh=100 * u.pix, skel_thresh=300 * u.pix, prune_criteria='length', max_prune_iter=5)
 
     pruned_skeleton = fil.skeleton_longpath
+    if len(fil.end_pts) == 0:
+        # We have no skeleton for some reason
+        return pruned_skeleton, np.nan
     length = fil.lengths(u.pix)[0].to_value()
 
     skel_extension, extra_length = extend_skeleton(fil, mask)
@@ -424,22 +448,22 @@ def measure_yolk(masks: np.ndarray, yolk_idx: np.ndarray, scale: float) -> list:
         if yolk_idx[i]:
             mask = masks[:, :, i].astype(np.uint8)
             lbl = sk_morph.label(mask)
-            region_props = sk_measure.regionprops(lbl, cache=False)
+            region_props = sk_measure.regionprops(lbl, cache=False)[0]
 
-            # We add up yolk areas and (more or less) average their position
-            yolk_area = yolk_pos_x = yolk_pos_y = 0
-            for region in region_props:
-                yolk_area += region.area
-                yolk_pos_x += int(region.centroid[1])
-                yolk_pos_y += int(region.centroid[0])
-            yolk_area /= (scale * scale)
+            yolk_area = region_props.area / (scale * scale)
+            yolk_pos_x = int(region_props.centroid[1])
+            yolk_pos_y = int(region_props.centroid[0])
 
-            yolk_pos = (int(yolk_pos_x / len(region_props) + ((region_props[0].bbox[3] - region_props[0].bbox[1]) / 2)),
-                        int(yolk_pos_y / len(region_props)))
+            # Assuming for now that these are good estimates of height & width
+            yolk_width = region_props.major_axis_length / scale
+            yolk_height = region_props.minor_axis_length / scale
+
+            yolk_pos = (int(yolk_pos_x + ((region_props.bbox[3] - region_props.bbox[1]) / 2)),
+                        int(yolk_pos_y))
 
             yolk_measurements[i] = {'Yolk area[mm2]': yolk_area,
-                                    'Yolk length[mm]': np.nan,
-                                    'Yolk height[mm]': np.nan,
+                                    'Yolk length[mm]': yolk_width,
+                                    'Yolk height[mm]': yolk_height,
                                     'Yolk pos[px]': yolk_pos}
 
     return yolk_measurements
@@ -506,12 +530,20 @@ def remove_orphans(fish: np.ndarray, body_idx: np.ndarray, eye_idx: np.ndarray, 
                     body_idx[f] = False
                 # Fish should have at most 2 eyes. If more, deal with that
                 elif n_eyes > 2:
-                    pass
+                    # print ('Too many eyes: {}'.format(n_eyes))
+                    # ...by deleting all the eyes?
+                    for e in body_contents:
+                        if eye_idx[e]:
+                            eye_idx[e] = False
                 yolks = yolk_idx[body_contents]
                 n_yolks = np.sum(yolks)
                 # Fish should have at most 1 yolk. If more, deal with that
                 if n_yolks > 1:
-                    pass
+                    # print ('Too many yolks: {}'.format(n_yolks))
+                    # ...by deleting all the yolks?
+                    for y in body_contents:
+                        if yolk_idx[y]:
+                            yolk_idx[y] = False
 
     # Remove eyes and yolks lacking a corresponding body
     for e, T in enumerate(eye_idx):
@@ -590,11 +622,13 @@ def correct_yolk_masks(masks: np.ndarray, yolk_idx: np.ndarray) -> np.ndarray:
         lbl = sk_morph.label(mask)
         region_props = sk_measure.regionprops(lbl, cache=False)
 
-        # Fill holes in yolk mask, but unlike with body masks we don't discard all but the largest region
-        # ...for now
+        # Discard all but the largest region and fill holes in yolk mask
+        areas = np.array([region.area for region in region_props])
+        largest_region_idx = areas.argmax()
+        yolk = region_props[largest_region_idx]
+
         new_mask = np.zeros((h, w), dtype=bool)
-        for yolk in region_props:
-            new_mask[yolk.bbox[0]:yolk.bbox[2], yolk.bbox[1]:yolk.bbox[3]] = yolk.filled_image
+        new_mask[yolk.bbox[0]:yolk.bbox[2], yolk.bbox[1]:yolk.bbox[3]] = yolk.filled_image
 
         yolk_masks[:, :, i] = new_mask
 
@@ -636,21 +670,22 @@ def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarr
 
 
 # %% Main
-def main() -> None:
+def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv: bool) -> None:
     scale = 287.0
-    log_path = os.path.join(nn_output_folder, 'measurements_log.csv')
+    log_path = os.path.join(folder, 'measurements_log.csv')
 
-    files = [f for f in os.listdir(nn_output_folder) if
-             (os.path.isfile(os.path.join(nn_output_folder, f)) and os.path.splitext(f)[1] != '.csv')]
+    files = [f for f in os.listdir(folder) if
+             (os.path.isfile(os.path.join(folder, f)) and os.path.splitext(f)[1] != '.csv')]
     files.sort()
 
-    write_cod_csv_header(log_path)
+    if write_csv:
+        write_cod_csv_header(log_path)
 
     for f in files:
-        im = load_image(f)
+        im = load_image(image_folder, f)
         h, w = im.shape[0:2]
 
-        with open(os.path.join(nn_output_folder, f), 'rb') as file:
+        with open(os.path.join(folder, f), 'rb') as file:
             nn_output = pickle.load(file)
 
         class_ids = nn_output['class_ids']
@@ -676,15 +711,43 @@ def main() -> None:
                 eye_measurements = measure_eyes(masks, eye_idx, scale)
                 yolk_measurements = measure_yolk(masks, yolk_idx, scale)
 
-                # im = draw_rois(im, rois, body_idx, eye_idx, yolk_idx)
-                im = draw_masks(im, masks, body_idx, eye_idx, yolk_idx)
-                im = draw_labels(im, eye_measurements, body_measurements, yolk_measurements, fish)
+                if show_images:
+                    # im = draw_rois(im, rois, body_idx, eye_idx, yolk_idx)
+                    im = draw_masks(im, masks, body_idx, eye_idx, yolk_idx)
+                    im = draw_labels(im, eye_measurements, body_measurements, yolk_measurements, fish)
 
-                cv.imshow('Neural Network output', im)
-                cv.waitKey(0)
+                    cv.imshow('Neural Network output', im)
+                    cv.waitKey(0)
 
-                write_frame_to_csv(log_path, f, fish, body_measurements, eye_measurements, yolk_measurements,
-                               body_idx, eye_idx, yolk_idx)
+                if write_csv:
+                    write_frame_to_csv(log_path, folder, f, fish, body_measurements, eye_measurements, yolk_measurements,
+                                   body_idx, eye_idx, yolk_idx)
 
+
+def main():
+    nn_output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-1,25/'
+    image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-1,25/'
+    show_images = False
+    write_csv = True
+
+    image_root_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/'
+    nn_output_root_folder = '/home/dave/cod_results/uncropped/1246/'
+
+    dates = ['20200416', '20200417']
+    treatments = ['1', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    done = ['20200416/1']
+
+    for date in dates:
+        for treatment in treatments:
+            nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
+            image_folder = os.path.join(image_root_folder, date, treatment)
+
+            if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
+                if os.path.join(date, treatment) in done:
+                    print('Skipping previously analysed folder {}'.format(nn_output_folder))
+                else:
+                    print('Analysing {}'.format(nn_output_folder))
+                    analyse_folder(nn_output_folder, image_folder, show_images, write_csv)
+                    print('    ...done')
 
 main()
