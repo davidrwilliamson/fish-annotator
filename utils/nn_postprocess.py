@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 import cv2 as cv
+from progressbar import ProgressBar
 from fil_finder import FilFinder2D
 import astropy.units as u
 from skimage import morphology as sk_morph
@@ -214,10 +215,10 @@ def check_rois(body_idx: np.ndarray, eye_idx: np.ndarray, yolk_idx: np.ndarray, 
                -> [np.ndarray, np.ndarray, np.ndarray]:
     # We check for eyes/yolks inside body roi FIRST, because even if we discard a body for crossing the image
     # boundaries the inner components might still be fine
-    eye_idx = get_valid_inner_rois(rois, body_idx, eye_idx, im_width)
-    yolk_idx = get_valid_inner_rois(rois, body_idx, yolk_idx, im_width)
+    eye_idx = get_valid_inner_rois(rois, body_idx, eye_idx, im_width, 3)
+    yolk_idx = get_valid_inner_rois(rois, body_idx, yolk_idx, im_width, 3)
 
-    body_idx = get_valid_body_rois(rois, body_idx, im_width)
+    body_idx = get_valid_body_rois(rois, body_idx, im_width, 3)
 
     return body_idx, eye_idx, yolk_idx
 
@@ -672,16 +673,20 @@ def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarr
 # %% Main
 def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv: bool) -> None:
     scale = 287.0
-    log_path = os.path.join(folder, 'measurements_log.csv')
+    date, treatment = folder.split('/')[-2:]
+    log_path = os.path.join(folder, '{}_{}_measurements_log.csv'.format(date, treatment))
 
     files = [f for f in os.listdir(folder) if
-             (os.path.isfile(os.path.join(folder, f)) and os.path.splitext(f)[1] != '.csv')]
+             (os.path.isfile(os.path.join(folder, f))
+             and (os.stat(os.path.join(folder, f)).st_size > 408)
+             and (os.path.splitext(f)[1] != '.csv'))]
     files.sort()
 
     if write_csv:
         write_cod_csv_header(log_path)
 
-    for f in files:
+    pbar = ProgressBar()
+    for f in pbar(files):
         im = load_image(image_folder, f)
         h, w = im.shape[0:2]
 
@@ -725,17 +730,15 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
 
 
 def main():
-    nn_output_folder = '/home/dave/cod_results/uncropped/1246/20200416/DCA-1,25/'
-    image_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/20200416/DCA-1,25/'
     show_images = False
     write_csv = True
 
     image_root_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/'
     nn_output_root_folder = '/home/dave/cod_results/uncropped/1246/'
 
-    dates = ['20200416', '20200417']
-    treatments = ['1', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
-    done = ['20200416/1']
+    dates = ['20200413', '20200414', '20200415', '20200416', '20200417']
+    treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    done = []
 
     for date in dates:
         for treatment in treatments:
@@ -749,5 +752,6 @@ def main():
                     print('Analysing {}'.format(nn_output_folder))
                     analyse_folder(nn_output_folder, image_folder, show_images, write_csv)
                     print('    ...done')
+
 
 main()
