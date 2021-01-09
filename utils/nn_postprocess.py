@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 import cv2 as cv
-from progressbar import ProgressBar
+from progressbar import ProgressBar, Percentage, Bar, Timer, AdaptiveETA
 from fil_finder import FilFinder2D
 import astropy.units as u
 from skimage import morphology as sk_morph
@@ -685,7 +685,7 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
     if write_csv:
         write_cod_csv_header(log_path)
 
-    pbar = ProgressBar()
+    pbar = ProgressBar(widgets=[Percentage(), ' ', Bar(), '   ', Timer(), '   ', AdaptiveETA()])
     for f in pbar(files):
         im = load_image(image_folder, f)
         h, w = im.shape[0:2]
@@ -734,10 +734,10 @@ def main():
     write_csv = True
 
     image_root_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/'
-    nn_output_root_folder = '/home/dave/cod_results/uncropped/1246/'
+    nn_output_root_folder = '/home/dave/cod_results/2106/'
 
     dates = ['20200413', '20200414', '20200415', '20200416', '20200417']
-    treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    treatments = ['1', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
     done = []
 
     for date in dates:
@@ -751,7 +751,7 @@ def main():
                 else:
                     print('Analysing {}'.format(nn_output_folder))
                     analyse_folder(nn_output_folder, image_folder, show_images, write_csv)
-                    print('    ...done')
+                    # print('    ...done')
 
 
 main()

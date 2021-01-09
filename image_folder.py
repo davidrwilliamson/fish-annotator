@@ -41,7 +41,8 @@ class ImageFolder:
         if os.path.isfile(rois_filename):
             rois_file = open(rois_filename, 'rt')
         else:
-            raise RuntimeError('{}: RoIs file missing.'.format(self.folder))
+            rois_file = None
+            # raise RuntimeError('{}: RoIs file missing.'.format(self.folder))
         # TODO: Handle this gracefully in program rather than crashing out
 
         return rois_file
@@ -49,29 +50,31 @@ class ImageFolder:
     def _list_image_files(self) -> None:
         rois_file = self._load_rois_file()
 
-        for line in rois_file.readlines():
-            f = re.match('^filename:', line)
-            if f:
-                fn = line.split(': ')[1].strip()
-                self._interesting_frames.append(self._all_files.index(fn))
+        if rois_file:
+            for line in rois_file.readlines():
+                f = re.match('^filename:', line)
+                if f:
+                    fn = line.split(': ')[1].strip()
+                    self._interesting_frames.append(self._all_files.index(fn))
 
     def _list_rois(self) -> None:
         rois_file = self._load_rois_file()
 
-        roi = []
-        for line in rois_file.readlines():
-            r = re.match('^roi:', line)
-            f = re.match('^filename:', line)
-            if r:
-                roi.append(line.split(': ')[1].strip())
-            elif f:
-                if roi:
-                    self._rois[self._all_files.index(fn)] = roi
-                    roi = []
-                fn = line.split(': ')[1].strip()
-            else:
-                print('Unexpected line in RoIs file.')
-        self._rois[self._all_files.index(fn)] = roi
+        if rois_file:
+            roi = []
+            for line in rois_file.readlines():
+                r = re.match('^roi:', line)
+                f = re.match('^filename:', line)
+                if r:
+                    roi.append(line.split(': ')[1].strip())
+                elif f:
+                    if roi:
+                        self._rois[self._all_files.index(fn)] = roi
+                        roi = []
+                    fn = line.split(': ')[1].strip()
+                else:
+                    print('Unexpected line in RoIs file.')
+            self._rois[self._all_files.index(fn)] = roi
 
     @property
     def curr_files(self) -> Tuple[str, str, str]:

@@ -145,10 +145,11 @@ def format_polygon_string(polygon: np.ndarray) -> str:
 
 def main():
     labels = []
-    folders = ['annotations']  # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
+    folders = ['annotations_x2']  # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
 
     for ff in folders:
-        folder = os.path.join('/home/davidw/Desktop/cod_egg_training/', ff)  # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200410/1/analysis/annotations'
+        folder = os.path.join('/home/dave/Desktop/more_annotations/still_more', ff)
+        # folder = os.path.join('/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/cropped/', ff)
         # folder = os.path.join('/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200413/DCA-2,50/analysis/annotations')
         files = sorted([file for file in os.listdir(folder) if os.path.splitext(file)[1] == '.png'])
 

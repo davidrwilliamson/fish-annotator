@@ -27,8 +27,8 @@ def main(annotation_folder, image_folder):
 
 
 def export_crop(fname, fnames, bbox):
-    ann_crop_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod/annotations_cropped/'
-    im_crop_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod/images_cropped/'
+    ann_crop_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/cropped/annotations/'
+    im_crop_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/cropped/images/'
 
     for im_file in fnames[fname]:
         im = cv.imread(im_file, cv.IMREAD_UNCHANGED)
@@ -97,7 +97,7 @@ def find_bb(fname, fnames):
 
     # print ('Largest bounding box\n    TL: ({}, {}), BR: ({}, {})'.format(x0_i, y0_i, x1_i, y1_i))
 
-    margin = 20
+    margin = 10
     x0_i = max(x0_i - margin, 0)
     y0_i = max(y0_i - margin, 0)
     x1_i = min(x1_i + margin, max_x)
@@ -123,7 +123,7 @@ def draw_preview(images, fnames, bbox):
     plt.show()
 
 
-annotation_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod/annotations'
-image_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod/images'
+annotation_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/uncropped/annotations'
+image_folder = '/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/uncropped/images'
 
 main(annotation_folder, image_folder)
