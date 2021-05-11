@@ -19,6 +19,10 @@ class MainCanvas(QLabel):
         canvas.fill(QColor('transparent'))
         self.setPixmap(canvas)
 
+    def adjust_canvas_size(self, w, h) -> None:
+        self._w, self._h = w, h
+        self._set_canvas()
+
 
 class RoIsCanvas(MainCanvas):
     def __init__(self, parent: QWidget) -> None:

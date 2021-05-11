@@ -14,6 +14,7 @@ import matplotlib.patches as mpatches
 
 # Test background subtraction
 
+
 class BackgroundSubtraction:
 
     def __init__(self, folder='/home/davidw/'):
@@ -27,7 +28,7 @@ class BackgroundSubtraction:
     def initialise(self):
         if self.files == '':
             self.files = [os.path.join(self.folder, f)
-                          for f in sorted(os.listdir(self.folder)) if f.endswith('.silc')]
+                          for f in sorted(os.listdir(self.folder)) if f.endswith('.silc_bayer')]
 
         self.total_files = len(self.files)
 
@@ -62,7 +63,7 @@ class BackgroundSubtraction:
 
 def mask(im, thresh, min_area=10000):
     # Convert to binary image, selecting all pixels with at least one channel > 0 and setting those pixels to 1
-    im_bw = scpr.image2blackwhite_fast(im, thresh)
+    im_bw = scpr.image2binary_fast(im, thresh)
     # im_bin = scpr.clean_bw(im_bin, 12)
     im_bw = np.amax(im_bw, axis=2)
     im_bw = im_bw * np.ones(im_bw.shape)
@@ -83,6 +84,7 @@ def mask(im, thresh, min_area=10000):
     mask = np.array(im_bw, dtype='uint8')
 
     return mask, rects
+
 
 def save_rois(bs):
     last_frame = bs.total_files
@@ -107,6 +109,7 @@ def save_rois(bs):
     except StopIteration:
         print ('RoI extraction complete.')
     out_file.close()
+
 
 def display_rois(folder):
     rois_filename = os.path.join(folder, 'RoIs')
@@ -175,7 +178,7 @@ def display_rois(folder):
 
 def output_backgrounds(folder):
     stack_size = 50
-    all_files = [f for f in os.listdir(folder) if f.endswith('.silc')]
+    all_files = [f for f in os.listdir(folder) if f.endswith('.silc_bayer')]
 
     rois_filename = os.path.join(folder, 'RoIs')
     if os.path.isfile(rois_filename):
@@ -208,8 +211,9 @@ def output_backgrounds(folder):
             print('Filename {} not found in list of .silc files.'.format(file))
     print ('Completed {}'.format(folder))
 
+
 def play_animation(bs):
-    ##### Animated frame by frame output display
+    # Animated frame by frame output display
     fig, axarr = plt.subplots(3, 1)
 
     def update(frame):
@@ -232,11 +236,13 @@ def play_animation(bs):
     plt.show()
     plt.close(fig)
 
+
 def main():
-    folders =  [# '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200404/3',
+    folders = ['/media/dave/dave_8tb/2021/20210422/sw1_1'
+        # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200404/3',
                 # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200405',
                 # OSError: Failed to interpret file '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200406/1/D20200406T120745.162977.silc' as a pickle
-                '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200406/1',
+                # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200406/1',
                 # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200407/1',
                 # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200408/1',
                 # '/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200409/1',
@@ -318,12 +324,12 @@ def main():
 
     for folder in folders:
         output_backgrounds(folder)
-        # bs = BackgroundSubtraction(folder)
-        # bs.initialise()
+        bs = BackgroundSubtraction(folder)
+        bs.initialise()
 
         # play_animation(bs)
-        # save_rois(bs)
-        # display_rois(folder)
+        save_rois(bs)
+        display_rois(folder)
 
 
 

@@ -424,8 +424,24 @@ class MainWindow(QMainWindow):
             if self.curr_ann_layer != 4:
                 self.right_buttons.btn_ann_4.click()
             circles = find_circles(self.im_folder.curr_files[0])
-        for circle in circles[0, :]:
-            self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
+            for circle in circles[0, :]:
+                self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
+
+        if option == AnalysisMenu.BACKGROUNDER:
+            bg_folder = os.path.join(self.im_folder.folder, 'analysis/backgrounds')
+            masks_folder = os.path.join(self.im_folder.folder, 'analysis/binary_masks')
+            try:
+                os.makedirs(bg_folder)
+            except FileExistsError:
+                pass
+            try:
+                os.makedirs(masks_folder)
+            except FileExistsError:
+                pass
+
+            background_subtraction(self.im_folder.folder)
+            self.im_folder._list_rois()
+            self.im_folder._list_image_files()
 
 
 class ScaleBar(QLabel):

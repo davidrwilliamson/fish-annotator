@@ -38,7 +38,7 @@ def find_circles(im_file):
     g_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     circles = cv.HoughCircles(g_img, cv.HOUGH_GRADIENT, 1, minDist=200,
-c
+
     # if circles is not None:
     #     circles = np.uint16(np.around(circles))
         # for i in circles[0,:]:

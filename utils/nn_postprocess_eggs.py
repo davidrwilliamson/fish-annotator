@@ -7,6 +7,7 @@ import astropy.units as u
 from skimage import morphology as sk_morph
 from skimage import measure as sk_measure
 from skimage import transform as sk_transform
+from progressbar import ProgressBar, Percentage, Bar, Timer, AdaptiveETA
 
 
 def load_image(image_folder: str, f: str) -> np.ndarray:
@@ -460,7 +461,8 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
     if write_csv:
         write_cod_egg_csv_header(log_path)
 
-    for f in files:
+    pbar = ProgressBar(widgets=[Percentage(), ' ', Bar(), '   ', Timer(), '   ', AdaptiveETA()])
+    for f in pbar(files):
         im = load_image(image_folder, f)
         h, w = im.shape[0:2]
 
@@ -499,15 +501,15 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
 
 
 def main():
-    show_images = True
-    write_csv = False
+    show_images = False
+    write_csv = True
 
     image_root_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/'
-    nn_output_root_folder = '/home/dave/cod_results/cod_eggs/0735/'
+    nn_output_root_folder = '/home/dave/cod_results/cod_eggs/20201211/4319'
 
     # dates = ['20200404', '20200405', '20200406', '20200407', '20200408', '20200409', '20200410', '20200411', '20200412']
-    dates = ['20200409']#11', '20200412']
-    treatments = ['DCA-ctrl']#['1', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00',
+    dates = ['20200404', '20200407', '20200408']
+    treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
                   # '2', 'DCA-ctrl-2']
     done = []
 

@@ -17,6 +17,7 @@ class ExportMenu(IntEnum):
 
 class AnalysisMenu(IntEnum):
     CIRCLES = 0
+    BACKGROUNDER = 1
 
 # class PreviewPopup(QWidget):
 #     def __init__(self) -> None:
@@ -81,8 +82,11 @@ class MainMenu(QMenuBar):
 
         action_analyse_circles = QAction('&Find egg circles', self)
         action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
+        action_analyse_background_subtract = QAction('Perform &Background subtraction', self)
+        action_analyse_background_subtract.triggered.connect(lambda: self._call_analyse(AnalysisMenu.BACKGROUNDER))
 
         self.analysis_menu.addAction(action_analyse_circles)
+        self.analysis_menu.addAction(action_analyse_background_subtract)
 
     def _call_open(self) -> None:
         dlg = QFileDialog()

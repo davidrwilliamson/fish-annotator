@@ -11,7 +11,9 @@ class ImageFolder:
     def __init__(self, folder: str) -> None:
         self.folder = folder
 
-        self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] == '.silc'])
+        silc_extensions = ['.silc', '.silc_bayer', '.bayer_silc']
+
+        self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
         self._interesting_frames = []
         self._bad_frames = []
         self._rois = [None] * len(self._all_files)
@@ -38,7 +40,7 @@ class ImageFolder:
     def _load_rois_file(self) -> TextIO:
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
 
-        if os.path.isfile(rois_filename):
+        if os.path.isfile(rois_filename) and os.stat(rois_filename).st_size > 0:
             rois_file = open(rois_filename, 'rt')
         else:
             rois_file = None
@@ -63,17 +65,17 @@ class ImageFolder:
         if rois_file:
             roi = []
             for line in rois_file.readlines():
-                r = re.match('^roi:', line)
-                f = re.match('^filename:', line)
-                if r:
-                    roi.append(line.split(': ')[1].strip())
-                elif f:
-                    if roi:
-                        self._rois[self._all_files.index(fn)] = roi
-                        roi = []
-                    fn = line.split(': ')[1].strip()
-                else:
-                    print('Unexpected line in RoIs file.')
+                    r = re.match('^roi:', line)
+                    f = re.match('^filename:', line)
+                    if r:
+                        roi.append(line.split(': ')[1].strip())
+                    elif f:
+                        if roi:
+                            self._rois[self._all_files.index(fn)] = roi
+                            roi = []
+                        fn = line.split(': ')[1].strip()
+                    else:
+                        print('Unexpected line in RoIs file.')
             self._rois[self._all_files.index(fn)] = roi
 
     @property
