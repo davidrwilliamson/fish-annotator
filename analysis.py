@@ -62,24 +62,24 @@ class BackgroundSubtraction:
             interest_files = self.files
 
         print('Calculating backgrounds...')
+        f0 = os.path.join(self.folder, interest_files[0])
+        im0 = np.load(f0).squeeze()
+        bg_stack = np.empty((self.av_window, im0.shape[0], im0.shape[1]))
+        # Set up bg_stack for first n=av_window images
+        for i in range(self.av_window):
+            bg_stack[i] = np.load(os.path.join(self.folder, self.files[i])).squeeze()
+
         for file in tqdm(interest_files):
             # Skip if a background file already exists
             if os.path.isfile('{}.bg.npy'.format(os.path.join(self.folder, 'analysis/backgrounds', file))):
                 pass
             else:
-                fn = os.path.join(self.folder, file)
-                im0 = np.load(fn).squeeze()
                 try:
                     f_index = self.files.index(file)
-                    bg_stack = np.empty((self.av_window, im0.shape[0], im0.shape[1]))
-                    # Files greater than the rolling average window
-                    if f_index >= self.av_window:
-                        for i in range(f_index - self.av_window, f_index):
-                            bg_stack[i - f_index] = np.load(os.path.join(self.folder, self.files[i])).squeeze()
-                    # Earlier files
-                    else:
-                        for i in range(self.av_window):
-                            bg_stack[i] = np.load(os.path.join(self.folder, self.files[i])).squeeze()
+                    # Once we're past the first n=av_window files we need to start adjusting the background stack
+                    if f_index > self.av_window:
+                        bg_stack = np.roll(bg_stack, -1, axis=0)
+                        bg_stack[-1] = (np.load(os.path.join(self.folder, self.files[f_index - 1])).squeeze())
                     bg = np.uint8(bg_stack.mean(axis=0))
                     np.save('{}.bg.npy'.format(os.path.join(self.folder, 'analysis/backgrounds', file)), bg.squeeze())
                 except FileNotFoundError:
