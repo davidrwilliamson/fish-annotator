@@ -23,7 +23,8 @@ class ImageFolder:
         self._list_image_files()
         self._list_rois()
 
-        self._intf_idx = None
+        self._intf_idx = 0
+        self.frame_w, self.frame_h = self._get_frame_size()
 
         if self._interesting_frames:
             self._intf_idx = 0
@@ -36,6 +37,12 @@ class ImageFolder:
             # self._show_bad = False
             self._show_interesting = False
             self._show_other = True
+
+    def _get_frame_size(self) -> Tuple[int, int]:
+        im0 = np.load(os.path.join(self.folder, self._all_files[0])).astype('uint8').squeeze()
+        h, w = im0.shape
+
+        return w, h
 
     def _load_rois_file(self) -> TextIO:
         rois_filename = os.path.join(self.folder, 'analysis/RoIs')
@@ -205,14 +212,99 @@ class ImageFolder:
             if self._curr_frame_no not in self._interesting_frames:
                 self._interesting_frames.append(self._curr_frame_no)
                 self._interesting_frames.sort()
+                # Calculate RoIs (if any), add file to RoIs list file and write binary mask to disk
+                self.calc_single_roi()
         else:
             if self._curr_frame_no in self._interesting_frames:
+                # Rewrite the RoIs file without this frame
+                self.remove_roi()
                 # If this is the last interesting frame, go back one so we don't get out of range
                 if self._curr_frame_no is self._interesting_frames[-1]:
                     self._intf_idx -= 1
                 self._interesting_frames.remove(self._curr_frame_no)
                 if not self._show_other:
                     self.next_frame()
+
+    def toggle_show_interesting(self, checked: bool) -> None:
+        self._show_interesting = checked
+        self.next_frame()
+        self.prev_frame()
+
+    def toggle_show_other(self, checked: bool) -> None:
+        self._show_other = checked
+        self.next_frame()
+        self.prev_frame()
+
+    def calc_single_roi(self) -> None:
+        """Calculate a binary mask and RoIs for a single file, to be used when marking images as 'interesting'.
+        Note that we write out the BM and add the file to the RoIs list even if no areas of interest are found."""
+        from analysis import mask
+
+        im_raw, im_bg, _ = self.curr_files  # returns str, str, str
+        im_raw = np.load(im_raw).squeeze()
+        im_bg = np.load(im_bg).squeeze()
+
+        im = im_raw - im_bg
+        im += 215
+        im[im < 0] = 0
+        im[im > 255] = 255
+        im = np.uint8(im)
+        im_bm, rects = mask(im, 0.9)
+
+        fname = self._all_files[self._curr_frame_no]
+
+        rois_filename = os.path.join(self.folder, 'analysis', 'RoIs')
+        if os.path.isfile(rois_filename):
+            print('RoI file already exists for {}/'.format(self.folder))
+            rois_file = open(rois_filename, 'at')
+        else:
+            rois_file = open(rois_filename, 'wt')
+
+        np.save('{}.mask.npy'.format(os.path.join(self.folder, 'analysis/binary_masks', fname)), im_bm)
+        rois_file.write('filename: {}\n'.format(fname), )
+        if len(rects) > 0:
+            rois_file.writelines(
+                ['roi: {0}, {1}, {2}, {3}\n'.format(rect._x0, rect._y0, rect._x1, rect._y1) for rect in rects])
+
+    def remove_roi(self):
+        rois_filename = os.path.join(self.folder, 'analysis', 'RoIs')
+        temp_filename = os.path.join(self.folder, 'analysis', 'temp')
+
+        # Extract line numbers to be removed
+        # We need to find both the line specifying the current file, and any RoIs lines following it
+        with open(rois_filename, 'rt') as rois:
+            counter = 0
+            line_numbers = []
+            line_found = False
+
+            lines = rois.readlines()
+            for line in lines:
+                line = line.strip()
+                if line == 'filename: {}'.format(os.path.basename(self.curr_files[0])):
+                    line_numbers.append(counter)
+                    line_found = True
+                elif line_found:
+                    if re.match('^roi:.*', line):
+                        line_numbers.append(counter)
+                    else:
+                        line_found = False
+
+                counter += 1
+
+        # Rewrite file without offending lines
+        with open(rois_filename, 'rt') as rois, open(temp_filename, 'wt') as temp:
+            counter = 0
+            lines = rois.readlines()
+            for line in lines:
+                if counter not in line_numbers:
+                    temp.write(line)
+                counter += 1
+
+        # Clean up
+        rois.close()
+        temp.close()
+        os.remove(rois_filename)
+        os.rename(temp_filename, rois_filename)
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:

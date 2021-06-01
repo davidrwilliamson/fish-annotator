@@ -13,6 +13,7 @@ class ExportMenu(IntEnum):
     EXPORT_ROIS = 1
     EXPORT_MONTAGE = 2
     EXPORT_FULL = 3
+    EXPORT_INTERESTING = 4
 
 
 class AnalysisMenu(IntEnum):
@@ -69,12 +70,15 @@ class MainMenu(QMenuBar):
         action_export_rois.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_ROIS))
         action_export_full = QAction('Export &full frames', self)
         action_export_full.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_FULL))
+        action_export_interesting = QAction('Export only &interesting frames', self)
+        action_export_interesting.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_INTERESTING))
         action_export_montage = QAction('Export &montage', self)
         action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
 
         # export_menu.addAction(action_preview_rois)
         self.export_menu.addAction(action_export_rois)
         self.export_menu.addAction(action_export_full)
+        self.export_menu.addAction(action_export_interesting)
         self.export_menu.addAction(action_export_montage)
 
         self.analysis_menu = self.addMenu('&Analysis')
@@ -82,7 +86,7 @@ class MainMenu(QMenuBar):
 
         action_analyse_circles = QAction('&Find egg circles', self)
         action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
-        action_analyse_background_subtract = QAction('Perform &Background subtraction', self)
+        action_analyse_background_subtract = QAction('Perform &Background subtraction and RoI extraction', self)
         action_analyse_background_subtract.triggered.connect(lambda: self._call_analyse(AnalysisMenu.BACKGROUNDER))
 
         self.analysis_menu.addAction(action_analyse_circles)
@@ -157,6 +161,8 @@ class MainMenu(QMenuBar):
             subfolder = os.path.join(root_path, 'cropped')
         elif export_type == ExportMenu.EXPORT_MONTAGE:
             subfolder = os.path.join(root_path, 'montage')
+        elif export_type == ExportMenu.EXPORT_INTERESTING:
+            subfolder = os.path.join(root_path, 'interesting')
         else:
             raise
 
@@ -187,6 +193,8 @@ class MainMenu(QMenuBar):
     def export_full_frames(self, im_folder: ImageFolder) -> None:
         save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_FULL)
 
+        im_folder.toggle_show_interesting(True)
+        im_folder.toggle_show_other(True)
         for frame in im_folder.frames:
             im_raw, _ = self._get_im_raw(im_folder)
 
@@ -196,3 +204,14 @@ class MainMenu(QMenuBar):
     def export_montage(self, im_folder: ImageFolder) -> None:
         pass
         # save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_MONTAGE)
+
+    def export_interesting(self, im_folder: ImageFolder) -> None:
+        save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_INTERESTING)
+
+        im_folder.toggle_show_interesting(True)
+        im_folder.toggle_show_other(False)
+        for frame in im_folder.frames:
+            im_raw, _ = self._get_im_raw(im_folder)
+
+            save_path = os.path.join(save_folder, '{}_full.png'.format(im_folder.framepos[1]))
+            im_raw.save(save_path, 'png')

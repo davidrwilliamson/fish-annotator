@@ -1,7 +1,6 @@
 import cv2 as cv
 import numpy as np
 import os
-import pysilcam.background as scbg
 import pysilcam.process as scpr
 import skimage as sk
 import re
@@ -29,8 +28,8 @@ class BackgroundSubtraction:
         self.folder = folder
         self.files = ''
         self.total_files = -1
-        self.aqgen = None
-        self.bggen = None
+
+        self.initialise()
 
     def initialise(self):
         if self.files == '':
@@ -40,13 +39,10 @@ class BackgroundSubtraction:
 
         self.total_files = len(self.files)
 
-        self.aqgen = self._generator_files()
-
-        print('* Initializing background image handler')
-        self.bggen = self._bayer_backgrounder(self.av_window, self.aqgen, None, True)
-
     def calc_backgrounds(self, interesting_only=True):
-        # Basically reimplements the silcam background subtracter but can also "look forward" for the first n files w/ n < averaging window
+        # Basically reimplements the silcam backgrounder but directly on Bayer images rather than converting to RGB
+        # Can also "look forward" for the first n files where n <= averaging window
+
         interest_files = []
 
         if interesting_only:
@@ -57,6 +53,9 @@ class BackgroundSubtraction:
                     f = re.match('^filename:', line)
                     if f:
                         interest_files.append(line.split(': ')[1].strip())
+            else:
+                print('RoIs file missing')
+                interest_files = self.files
         else:
             print('RoIs file missing')
             interest_files = self.files
@@ -71,6 +70,7 @@ class BackgroundSubtraction:
 
         for file in tqdm(interest_files):
             # Skip if a background file already exists
+            # TODO: Warn that background files already exist and offer possibility to recalculate + overwrite
             if os.path.isfile('{}.bg.npy'.format(os.path.join(self.folder, 'analysis/backgrounds', file))):
                 pass
             else:
@@ -95,6 +95,7 @@ class BackgroundSubtraction:
         print ('Performing background subtraction and RoI extraction...')
 
         for file in tqdm(self.files):
+            # TODO: Warn if RoIs already exist and offer possibility to recalculate + overwrite or skip
             try:
                 im_raw = np.load(os.path.join(self.folder, file)).squeeze()
                 im_bg = np.load(os.path.join(self.folder, 'analysis/backgrounds/', '{}.bg.npy'.format(file))).squeeze()
@@ -118,33 +119,9 @@ class BackgroundSubtraction:
         out_file.close()
         print('Complete.')
 
-    def _bayer_backgrounder(self, av_window, acquire, bad_lighting_limit=None, real_time_stats=False):
-        '''Similar to backgrounder in the main pysilcam code but adjusted for Bayer8'''
-        bgstack, imbg = scbg.ini_background(av_window, acquire)
-        stacklength = len(bgstack)
-
-        for filename, imraw in acquire:
-            bgstack, imbg, imc = scbg.shift_and_correct(bgstack, imbg, imraw,
-                                                        stacklength, real_time_stats)
-
-            yield filename, imc, imraw
-
-    def _generator_files(self):
-        '''Generator that loads images from file and converts them to RGB'''
-        for f in tqdm(self.files):
-            try:
-                im = np.load(f)
-                im = cv.cvtColor(im, cv.COLOR_BAYER_BG2RGB)
-            except EOFError:
-                print ('Error loading file {}'.format(repr(f)))
-                continue
-
-            yield f, im
-
 
 def background_subtraction(folder):
     bs = BackgroundSubtraction(folder)
-    bs.initialise()
     bs.calc_backgrounds(False)
     bs.calc_rois()
 

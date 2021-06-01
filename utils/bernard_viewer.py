@@ -154,14 +154,14 @@ def process_images(root_folder: str, date_folders: List[str], sub_folders: List[
 def main(im_write: bool = False, im_show: bool = True) -> None:
     # root_folder = '/media/dave/dave_8tb/2021/'
     root_folder = '/media/dave/dave_8tb/2021'
-    # date_folders = ['20210409', '20210410', '20210411', '20210412', '20210413', '20210414', '20210415']
-    date_folders = ['20210425']
+    date_folders = ['20210416', '20210417']
+    # date_folders = ['20210425']
 
-    # sub_folders = ['1', '2', '3']
+    sub_folders = ['1', '2', '3']
     # sub_folders = ['{0:02d}'.format(i) for i in range(11, 16)]
     # sub_folders = ['1', '2', '3', '4', 'sw1_1', 'sw1_2', 'sw3_1', 'sw3_2', 'sw3_3', 'ulsfo-28-1_1', 'ulsfo-28-1_2', 'ulsfo-28-1_3']
 
-    sub_folders = []
+    # sub_folders = []
     for date_folder in date_folders:
         contents = os.listdir(os.path.join(root_folder, date_folder))
         for c in contents:

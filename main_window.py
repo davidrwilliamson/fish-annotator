@@ -230,6 +230,7 @@ class MainWindow(QMainWindow):
         self.save_annotations_disk()
 
         self.im_folder = im_folder
+        self.image_frame.adjust_frame_size(im_folder.frame_w / 2, im_folder.frame_h / 2)
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.load_annotations_disk()
         self.load_annotations_mem()
@@ -395,11 +396,13 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(bool)
     def show_interesting_frames(self, checked: bool) -> None:
-        self.im_folder._show_interesting = checked
+        self.im_folder.toggle_show_interesting(checked)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(bool)
     def show_other_frames(self, checked: bool) -> None:
-        self.im_folder._show_other = checked
+        self.im_folder.toggle_show_other(checked)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(IntEnum)
     def export_menu(self, option: IntEnum) -> None:
@@ -417,6 +420,8 @@ class MainWindow(QMainWindow):
             self.main_menu.export_rois(self.im_folder)
         elif option == ExportMenu.EXPORT_MONTAGE:
             self.main_menu.export_montage(self.im_folder)
+        elif option == ExportMenu.EXPORT_INTERESTING:
+            self.main_menu.export_interesting(self.im_folder)
 
     @pyqtSlot(IntEnum)
     def analysis_menu(self, option: IntEnum) -> None:
@@ -442,6 +447,9 @@ class MainWindow(QMainWindow):
             background_subtraction(self.im_folder.folder)
             self.im_folder._list_rois()
             self.im_folder._list_image_files()
+
+            self.left_buttons.cb_interest.setChecked(True)
+            self.left_buttons.cb_other.setChecked(False)
 
 
 class ScaleBar(QLabel):
