@@ -425,6 +425,8 @@ class MainWindow(QMainWindow):
             self.main_menu.export_montage(self.im_folder)
         elif option == ExportMenu.EXPORT_INTERESTING:
             self.main_menu.export_interesting(self.im_folder)
+        elif option == ExportMenu.EXPORT_CURRENT:
+            self.main_menu.export_current(self.im_folder, self.image_frame, self.rois_canvas, self.annotation_canvases[self.curr_ann_layer], self.nn_preview_canvas)
 
     @pyqtSlot(IntEnum)
     def analysis_menu(self, option: IntEnum) -> None:

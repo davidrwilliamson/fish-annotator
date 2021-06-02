@@ -239,6 +239,9 @@ class ImageFolder:
                 self._remove_bad_frame()
 
     def toggle_interesting_frame(self, checked: bool) -> None:
+        # TODO: Removing the last interesting frame when only interesting frames is checked or unchecking other frames
+        # crashes the program. In cases where there are no interesting frames we need to fall back to showing other
+        # Same for bad frames.
         if checked:
             if self._curr_frame_no not in self._interesting_frames:
                 self._interesting_frames.append(self._curr_frame_no)

@@ -1,12 +1,15 @@
 from enum import IntEnum
 import os
-from PyQt5.QtCore import pyqtSignal, QRect
-from PyQt5.QtGui import QPixmap, QPainter
-from PyQt5.QtWidgets import QAction, QFileDialog, QLabel, QMenuBar, QWidget
+from PyQt5.QtCore import pyqtSignal, QPoint, QRect
+from PyQt5.QtGui import QImage, QPixmap, QPainter
+from PyQt5.QtWidgets import QAction, QFileDialog, QMenuBar, QWidget
 from typing import Tuple
+import qimage2ndarray as q2n
+import numpy as np
 
 from image_folder import ImageFolder
 import errors
+
 
 class ExportMenu(IntEnum):
     PREVIEW_ROIS = 0
@@ -14,11 +17,13 @@ class ExportMenu(IntEnum):
     EXPORT_MONTAGE = 2
     EXPORT_FULL = 3
     EXPORT_INTERESTING = 4
+    EXPORT_CURRENT = 5
 
 
 class AnalysisMenu(IntEnum):
     CIRCLES = 0
     BACKGROUNDER = 1
+
 
 # class PreviewPopup(QWidget):
 #     def __init__(self) -> None:
@@ -74,19 +79,23 @@ class MainMenu(QMenuBar):
         action_export_interesting.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_INTERESTING))
         action_export_montage = QAction('Export &montage', self)
         action_export_montage.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_MONTAGE))
+        action_export_current = QAction('Export &current image', self)
+        action_export_current.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_CURRENT))
 
         # export_menu.addAction(action_preview_rois)
         self.export_menu.addAction(action_export_rois)
         self.export_menu.addAction(action_export_full)
         self.export_menu.addAction(action_export_interesting)
         self.export_menu.addAction(action_export_montage)
+        self.export_menu.addAction(action_export_current)
 
         self.analysis_menu = self.addMenu('&Analysis')
         self.analysis_menu.setEnabled(False)
 
         action_analyse_circles = QAction('&Find egg circles (this frame)', self)
         action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
-        action_analyse_background_subtract = QAction('Perform &Background subtraction and RoI extraction (all frames)', self)
+        action_analyse_background_subtract = QAction('Perform &Background subtraction and RoI extraction (all frames)',
+                                                     self)
         action_analyse_background_subtract.triggered.connect(lambda: self._call_analyse(AnalysisMenu.BACKGROUNDER))
 
         self.analysis_menu.addAction(action_analyse_circles)
@@ -167,6 +176,8 @@ class MainMenu(QMenuBar):
             subfolder = os.path.join(root_path, 'montage')
         elif export_type == ExportMenu.EXPORT_INTERESTING:
             subfolder = os.path.join(root_path, 'interesting')
+        elif export_type == ExportMenu.EXPORT_CURRENT:
+            subfolder = os.path.join(root_path, 'selected')
         else:
             raise
 
@@ -219,3 +230,28 @@ class MainMenu(QMenuBar):
 
             save_path = os.path.join(save_folder, '{}_full.png'.format(im_folder.framepos[1]))
             im_raw.save(save_path, 'png')
+
+    def export_current(self, im_folder: ImageFolder, image_frame: 'ImageFrame', rois_canvas, painting_canvas, nn_preview_canvas) -> None:
+        save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_CURRENT)
+        n = 0
+        save_path = os.path.join(save_folder, '{}_selected_view_{}.png'.format(im_folder.framepos[1], n))
+        while os.path.isfile(save_path):
+            save_path = os.path.join(save_folder, '{}_selected_view_{}.png'.format(im_folder.framepos[1], n))
+            n += 1
+
+        if image_frame._adjusted_im is not None:
+            base_im: QImage = image_frame._adjusted_im
+        else:
+            base_im: QImage = image_frame.image
+
+        im = base_im.copy()
+        im_size = im.size()
+        painter = QPainter(im)
+
+        for canvas in [rois_canvas, painting_canvas, nn_preview_canvas]:
+            if canvas is not None:
+                pixmap = rois_canvas.pixmap()
+                painter.drawPixmap(QRect(QPoint(0, 0), im_size), pixmap)
+
+        painter.end()
+        im.save(save_path, 'png')
