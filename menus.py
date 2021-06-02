@@ -1,7 +1,7 @@
 from enum import IntEnum
 import os
-from PyQt5.QtCore import pyqtSignal, QPoint, QRect
-from PyQt5.QtGui import QImage, QPixmap, QPainter
+from PyQt5.QtCore import pyqtSignal, QPoint, QRect, Qt
+from PyQt5.QtGui import QImage, QColor, QPixmap, QPainter
 from PyQt5.QtWidgets import QAction, QFileDialog, QMenuBar, QWidget
 from typing import Tuple
 import qimage2ndarray as q2n
@@ -240,18 +240,19 @@ class MainMenu(QMenuBar):
             n += 1
 
         if image_frame._adjusted_im is not None:
-            base_im: QImage = image_frame._adjusted_im
+            base_im: QImage = image_frame._adjusted_im.toImage()
         else:
-            base_im: QImage = image_frame.image
+            base_im: QImage = image_frame.image.toImage()
 
+        im_size = base_im.size()
         im = base_im.copy()
-        im_size = im.size()
-        painter = QPainter(im)
+        im = im.convertToFormat(QImage.Format_ARGB32)
 
+        painter = QPainter(im)
+        painter.setCompositionMode(painter.CompositionMode_SourceOver)
         for canvas in [rois_canvas, painting_canvas, nn_preview_canvas]:
             if canvas is not None:
-                pixmap = rois_canvas.pixmap()
-                painter.drawPixmap(QRect(QPoint(0, 0), im_size), pixmap)
-
+                canvas_image = canvas.pixmap().toImage()
+                painter.drawImage(QRect(QPoint(0, 0), im_size), canvas_image)
         painter.end()
         im.save(save_path, 'png')

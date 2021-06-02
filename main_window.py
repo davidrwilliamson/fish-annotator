@@ -200,6 +200,7 @@ class MainWindow(QMainWindow):
         if os.path.isdir(save_folder):
             annotations = [file for file in os.listdir(save_folder) if os.path.splitext(file)[1] == '.png']
             for file in annotations:
+                # TODO: This fails with the new names silc_bayer and bayer_silc. Fix comprehension
                 i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
                 full_path = os.path.join(save_folder, file)
 
