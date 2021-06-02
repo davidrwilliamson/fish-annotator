@@ -27,17 +27,18 @@ class ImageFolder:
         self._list_rois()
 
         self._intf_idx = 0
+        self._bad_idx = 0
         self.frame_w, self.frame_h = self._get_frame_size()
 
         if self._interesting_frames:
             self._intf_idx = 0
             self._curr_frame_no = self._interesting_frames[self._intf_idx]
-            # self._show_bad = False
+            self._show_bad = False
             self._show_interesting = True
             self._show_other = False
         else:
             self._curr_frame_no = 0
-            # self._show_bad = False
+            self._show_bad = False
             self._show_interesting = False
             self._show_other = True
 
@@ -63,8 +64,21 @@ class ImageFolder:
 
         return rois_file
 
+    def _load_bad_frames_file(self) -> TextIO:
+        bad_frames_filename = os.path.join(self.folder, 'analysis/bad_frames')
+
+        if os.path.isfile(bad_frames_filename) and os.stat(bad_frames_filename).st_size > 0:
+            bad_frames_file = open(bad_frames_filename, 'rt')
+        else:
+            bad_frames_file = None
+            # raise RuntimeError('{}: RoIs file missing.'.format(self.folder))
+        # TODO: Handle this gracefully in program rather than crashing out
+
+        return bad_frames_file
+
     def _list_image_files(self) -> None:
         rois_file = self._load_rois_file()
+        bad_frames_file = self._load_bad_frames_file()
 
         if rois_file:
             for line in rois_file.readlines():
@@ -72,6 +86,15 @@ class ImageFolder:
                 if f:
                     fn = line.split(': ')[1].strip()
                     self._interesting_frames.append(self._all_files.index(fn))
+        self._interesting_frames.sort()
+
+        if bad_frames_file:
+            for line in bad_frames_file.readlines():
+                f = re.match('^filename:', line)
+                if f:
+                    fn = line.split(': ')[1].strip()
+                    self._bad_frames.append(self._all_files.index(fn))
+        self._bad_frames.sort()
 
     def _list_rois(self) -> None:
         rois_file = self._load_rois_file()
@@ -163,6 +186,8 @@ class ImageFolder:
             self._curr_frame_no = frame
             if self._curr_frame_no in self._interesting_frames:
                 self._intf_idx = self._interesting_frames.index(self._curr_frame_no)
+            if self._curr_frame_no in self._bad_frames:
+                self._bad_idx = self._bad_frames.index(self._curr_frame_no)
         else:
             raise
 
@@ -208,11 +233,10 @@ class ImageFolder:
     def toggle_bad_frame(self, checked: bool) -> None:
         if checked:
             if self._curr_frame_no not in self._bad_frames:
-                self._bad_frames.append(self._curr_frame_no)
-                self._bad_frames.sort()
+                self._add_bad_frame()
         else:
             if self._curr_frame_no in self._bad_frames:
-                self._bad_frames.remove(self._curr_frame_no)
+                self._remove_bad_frame()
 
     def toggle_interesting_frame(self, checked: bool) -> None:
         if checked:
@@ -231,6 +255,11 @@ class ImageFolder:
                 self._interesting_frames.remove(self._curr_frame_no)
                 if not self._show_other:
                     self.next_frame()
+
+    def toggle_show_bad(self, checked: bool) -> None:
+        self._show_bad = checked
+        self.next_frame()
+        self.prev_frame()
 
     def toggle_show_interesting(self, checked: bool) -> None:
         self._show_interesting = checked
@@ -315,6 +344,25 @@ class ImageFolder:
         temp.close()
         os.remove(rois_filename)
         os.rename(temp_filename, rois_filename)
+
+    def _add_bad_frame(self) -> None:
+        bad_frames_filename = os.path.join(self.folder, 'analysis', 'bad_frames')
+        fname = os.path.basename(self.curr_files[0])
+
+        if os.path.isfile(bad_frames_filename):
+            with open(bad_frames_filename, 'at') as f:
+                f.write('filename: {}\n'.format(fname))
+        else:
+            with open(bad_frames_filename, 'wt') as f:
+                f.write('filename: {}\n'.format(fname))
+
+        self._bad_frames.append(self._curr_frame_no)
+        self._bad_frames.sort()
+
+    def _remove_bad_frame(self) -> None:
+        self._bad_frames.remove(self._curr_frame_no)
+
+        # TODO: Remove bad frame line from bad frames file
 
 
 def load_image(file: str, im_type: str = 'raw') -> QPixmap:

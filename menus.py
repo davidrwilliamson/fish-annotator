@@ -84,9 +84,9 @@ class MainMenu(QMenuBar):
         self.analysis_menu = self.addMenu('&Analysis')
         self.analysis_menu.setEnabled(False)
 
-        action_analyse_circles = QAction('&Find egg circles', self)
+        action_analyse_circles = QAction('&Find egg circles (this frame)', self)
         action_analyse_circles.triggered.connect(lambda: self._call_analyse(AnalysisMenu.CIRCLES))
-        action_analyse_background_subtract = QAction('Perform &Background subtraction and RoI extraction', self)
+        action_analyse_background_subtract = QAction('Perform &Background subtraction and RoI extraction (all frames)', self)
         action_analyse_background_subtract.triggered.connect(lambda: self._call_analyse(AnalysisMenu.BACKGROUNDER))
 
         self.analysis_menu.addAction(action_analyse_circles)

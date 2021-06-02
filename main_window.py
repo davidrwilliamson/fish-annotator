@@ -84,7 +84,7 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.sgnl_toggle_scale_bar.connect(self.toggle_scale_bar)
         self.br_buttons.sgnl_toggle_bad_frame.connect(self.toggle_bad_frame)
         self.br_buttons.sgnl_toggle_interesting_frame.connect(self.toggle_interesting_frame)
-        # self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
+        self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
         self.left_buttons.sgnl_toggle_interesting_frames.connect(self.show_interesting_frames)
         self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
 
@@ -243,7 +243,7 @@ class MainWindow(QMainWindow):
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
-        self.left_buttons.enable_buttons(self.im_folder._show_other, self.im_folder._show_interesting)
+        self.left_buttons.enable_buttons(self.im_folder._show_bad, self.im_folder._show_other, self.im_folder._show_interesting)
         self.main_menu.enable_export()
 
     @pyqtSlot(int)
@@ -392,10 +392,10 @@ class MainWindow(QMainWindow):
         else:
             self.scale_bar.setVisible(False)
 
-    # @pyqtSlot(bool)
-    # def show_bad_frames(self, checked: bool) -> None:
-    #     pass
-    #     # print ('Show bad frames: {}'.format(checked))
+    @pyqtSlot(bool)
+    def show_bad_frames(self, checked: bool) -> None:
+        self.im_folder.toggle_show_bad(checked)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(bool)
     def show_interesting_frames(self, checked: bool) -> None:

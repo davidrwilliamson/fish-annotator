@@ -324,7 +324,7 @@ class BottomRightButtons(QWidget):
 class LeftButtons(QWidget):
     # TODO: Add markers showing which layers exist for the current frame
     # TODO: Add counters giving how many frames have annotations
-    # sgnl_toggle_bad_frames = pyqtSignal(bool)
+    sgnl_toggle_bad_frames = pyqtSignal(bool)
     sgnl_toggle_interesting_frames = pyqtSignal(bool)
     sgnl_toggle_other_frames = pyqtSignal(bool)
 
@@ -334,33 +334,34 @@ class LeftButtons(QWidget):
 
         self.lbl_frames = QLabel('\n')
         self.lbl_interesting_frames = QLabel('\n')
-        # self.lbl_bad_frames = QLabel('\n')
+        self.lbl_bad_frames = QLabel('\n')
 
-        # self.cb_bad = QCheckBox('Show bad frames')
+        self.cb_bad = QCheckBox('Show bad frames')
         self.cb_interest = QCheckBox('Show interesting frames')
         self.cb_other = QCheckBox('Show other frames')
 
-        # self.cb_bad.setTristate(False)
+        self.cb_bad.setTristate(False)
         self.cb_interest.setTristate(False)
         self.cb_other.setTristate(False)
+        self.cb_bad.setEnabled(False)
         self.cb_interest.setEnabled(False)
         self.cb_other.setEnabled(False)
 
         lb_layout.addWidget(self.lbl_frames)
         lb_layout.addWidget(self.lbl_interesting_frames)
-        # lb_layout.addWidget(self.lbl_bad_frames)
+        lb_layout.addWidget(self.lbl_bad_frames)
 
-        # lb_layout.addWidget(self.cb_bad)
         lb_layout.addWidget(self.cb_interest)
         lb_layout.addWidget(self.cb_other)
+        lb_layout.addWidget(self.cb_bad)
 
-        # self.cb_bad.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.BAD))
+        self.cb_bad.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.BAD))
         self.cb_interest.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.INTERESTING))
         self.cb_other.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.OTHER))
 
     def _call_toggled(self, checked: bool, option: IntEnum) -> None:
-        # if option == FrameToggle.BAD:
-        #     self.sgnl_toggle_bad_frames.emit(checked)
+        if option == FrameToggle.BAD:
+            self.sgnl_toggle_bad_frames.emit(checked)
         if option == FrameToggle.INTERESTING:
             self.sgnl_toggle_interesting_frames.emit(checked)
         if option == FrameToggle.OTHER:
@@ -369,9 +370,12 @@ class LeftButtons(QWidget):
     def update_labels(self, num_frames, cf_no, i_f, b_f) -> None:
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
-        # self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
+        self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
 
-    def enable_buttons(self, show_other: bool, show_interesting: bool) -> None:
+    def enable_buttons(self, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
+        self.cb_bad.setEnabled(True)
+        self.cb_bad.setChecked(show_bad)
+
         self.cb_other.setEnabled(True)
         self.cb_other.setChecked(show_other)
 
