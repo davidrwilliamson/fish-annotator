@@ -116,6 +116,9 @@ class MainWindow(QMainWindow):
                 self.right_buttons.btn_ann_3.click()
             if k_p == Qt.Key_5:
                 self.right_buttons.btn_ann_4.click()
+            if k_p == Qt.Key_I:
+                checked = self.br_buttons.cb_interest.isChecked()
+                self.toggle_interesting_frame(not checked)
 
     def closeEvent(self, event):
         self.save_annotations_mem()
@@ -429,8 +432,9 @@ class MainWindow(QMainWindow):
             if self.curr_ann_layer != 4:
                 self.right_buttons.btn_ann_4.click()
             circles = find_circles(self.im_folder.curr_files[0])
-            for circle in circles[0, :]:
-                self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
+            if circles:
+                for circle in circles[0, :]:
+                    self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
 
         if option == AnalysisMenu.BACKGROUNDER:
             bg_folder = os.path.join(self.im_folder.folder, 'analysis/backgrounds')

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QAction, QFileDialog, QLabel, QMenuBar, QWidget
 from typing import Tuple
 
 from image_folder import ImageFolder
-
+import errors
 
 class ExportMenu(IntEnum):
     PREVIEW_ROIS = 0
@@ -98,8 +98,12 @@ class MainMenu(QMenuBar):
         # folder = dlg.getExistingDirectory(self, 'Choose folder :)', '/media', QFileDialog.ShowDirsOnly)
         if dlg.exec_():
             folder = dlg.selectedFiles()[0]
-            self.image_folder = ImageFolder(folder)
-            self.sgnl_im_folder.emit(self.image_folder)
+            try:
+                self.image_folder = ImageFolder(folder)
+            except errors.NoImageFilesError as e:
+                print(e)
+            else:
+                self.sgnl_im_folder.emit(self.image_folder)
 
     def _call_save(self) -> None:
         self.sgnl_save_ann.emit()

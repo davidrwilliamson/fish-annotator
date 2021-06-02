@@ -5,6 +5,7 @@ import qimage2ndarray as q2n
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
 from typing import TextIO, Tuple
+import errors
 
 
 class ImageFolder:
@@ -14,6 +15,8 @@ class ImageFolder:
         silc_extensions = ['.silc', '.silc_bayer', '.bayer_silc']
 
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
+        self._check_image_files()
+
         self._interesting_frames = []
         self._bad_frames = []
         self._rois = [None] * len(self._all_files)
@@ -37,6 +40,10 @@ class ImageFolder:
             # self._show_bad = False
             self._show_interesting = False
             self._show_other = True
+
+    def _check_image_files(self):
+        if len(self._all_files) == 0:
+            raise errors.NoImageFilesError(self.folder)
 
     def _get_frame_size(self) -> Tuple[int, int]:
         im0 = np.load(os.path.join(self.folder, self._all_files[0])).astype('uint8').squeeze()
@@ -283,6 +290,9 @@ class ImageFolder:
                 if line == 'filename: {}'.format(os.path.basename(self.curr_files[0])):
                     line_numbers.append(counter)
                     line_found = True
+                    # Remove associated binary mask file
+                    # im_bm = self.curr_files[2]
+                    # os.remove(im_bm)
                 elif line_found:
                     if re.match('^roi:.*', line):
                         line_numbers.append(counter)
