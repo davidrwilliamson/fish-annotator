@@ -432,7 +432,7 @@ class MainWindow(QMainWindow):
             if self.curr_ann_layer != 4:
                 self.right_buttons.btn_ann_4.click()
             circles = find_circles(self.im_folder.curr_files[0])
-            if circles:
+            if circles is not None:
                 for circle in circles[0, :]:
                     self.annotation_canvases[self.curr_ann_layer].draw_circle(circle)
 
