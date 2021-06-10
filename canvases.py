@@ -56,6 +56,14 @@ class RoIsCanvas(MainCanvas):
         painter.end()
         self.update()
 
+    def paintEvent(self, event) -> None:
+        if self._w > 0 and self._h > 0:
+            painter = QPainter()
+            painter.begin(self)
+
+            painter.drawPixmap(0, 0, self.pixmap())
+            painter.end()
+
 
 class PaintingCanvas(MainCanvas):
     def __init__(self, parent: QWidget, colour: str) -> None:
@@ -124,6 +132,14 @@ class PaintingCanvas(MainCanvas):
         self.update()
 
         self.is_used = True
+
+    def paintEvent(self, event) -> None:
+        if self._w > 0 and self._h > 0:
+            painter = QPainter()
+            painter.begin(self)
+
+            painter.drawPixmap(0, 0, self.pixmap())
+            painter.end()
 
 
 class ImageFrame(MainCanvas):
