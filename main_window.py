@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
                 checked = self.br_buttons.cb_interest.isChecked()
                 self.toggle_interesting_frame(not checked)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         self.save_annotations_mem()
         self.save_annotations_disk()
 
@@ -234,7 +234,7 @@ class MainWindow(QMainWindow):
             canvas.set_frame_size(w, h)
 
     @pyqtSlot()
-    def save_ann(self):
+    def save_ann(self) -> None:
         self.save_annotations_mem()
         self.save_annotations_disk()
         self.load_annotations_disk()
@@ -491,7 +491,7 @@ class ScaleBar(QLabel):
 
         self._set_canvas()
         self._draw_bars()
-        self._draw_lables()
+        self._draw_labels()
 
     def _set_canvas(self) -> None:
         canvas = QPixmap(self.w, self.h)
@@ -522,7 +522,7 @@ class ScaleBar(QLabel):
         painter.drawRect(90, 25, 40, 10)
         painter.drawRect(130, 15, 40, 10)
 
-    def _draw_lables(self) -> None:
+    def _draw_labels(self) -> None:
         lab_0 = QLabel(self)
         lab_0.setText('0')
         lab_0.setAlignment(Qt.AlignCenter)

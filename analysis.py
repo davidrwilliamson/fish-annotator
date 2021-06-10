@@ -9,7 +9,7 @@ from tqdm import tqdm
 import matplotlib.patches as mpatches
 
 
-def find_circles(im_file):
+def find_circles(im_file) -> np.ndarray:
     im = np.load(im_file).astype('uint8').squeeze()
     im = cv.cvtColor(im, cv.COLOR_BAYER_BG2RGB)
     im = cv.medianBlur(im, 7)
@@ -31,7 +31,7 @@ class BackgroundSubtraction:
 
         self.initialise()
 
-    def initialise(self):
+    def initialise(self) -> None:
         if self.files == '':
             self.files = [os.path.join(f)
                           for f in sorted(os.listdir(self.folder))
@@ -39,7 +39,7 @@ class BackgroundSubtraction:
 
         self.total_files = len(self.files)
 
-    def calc_backgrounds(self, interesting_only=True):
+    def calc_backgrounds(self, interesting_only=True) -> None:
         # Basically reimplements the silcam backgrounder but directly on Bayer images rather than converting to RGB
         # Can also "look forward" for the first n files where n <= averaging window
 
@@ -86,7 +86,7 @@ class BackgroundSubtraction:
                     print('Filename {} not found in list of .silc files.'.format(file))
         print('Background calculation complete.')
 
-    def calc_rois(self):
+    def calc_rois(self) -> None:
         out_filename = os.path.join(self.folder, 'analysis', 'RoIs')
         if os.path.isfile(out_filename):
             print('RoI file already exists for {}/'.format(self.folder))
@@ -120,13 +120,13 @@ class BackgroundSubtraction:
         print('Complete.')
 
 
-def background_subtraction(folder):
+def background_subtraction(folder) -> None:
     bs = BackgroundSubtraction(folder)
     bs.calc_backgrounds(False)
     bs.calc_rois()
 
 
-def mask(im, thresh, min_area=1000):
+def mask(im, thresh, min_area=1000) -> tuple:
     # Convert to binary image, selecting all pixels with at least one channel > 0 and setting those pixels to 1
     im_bw = scpr.image2binary_fast(im, thresh)
     # im_bin = scpr.clean_bw(im_bin, 12)

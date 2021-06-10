@@ -11,6 +11,6 @@ class NoImageFilesError(Error):
         message -- explanation of error
     """
 
-    def __init__(self, folder):
+    def __init__(self, folder) -> None:
         self.message = "NoImageFilesError: No silc images found in folder {}".format(folder)
         super().__init__(self.message)

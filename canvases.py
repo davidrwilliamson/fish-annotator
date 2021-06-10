@@ -179,7 +179,7 @@ class NNPreviewCanvas(MainCanvas):
         self.pen_color = QColor()
         self.points = []
 
-    def draw_preview(self, parent_ann_layer: PaintingCanvas):
+    def draw_preview(self, parent_ann_layer: PaintingCanvas) -> None:
         input_pmap = parent_ann_layer.pixmap()
         self.pen_color = parent_ann_layer.pen_colour
 

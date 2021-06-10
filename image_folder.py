@@ -42,7 +42,7 @@ class ImageFolder:
             self._show_interesting = False
             self._show_other = True
 
-    def _check_image_files(self):
+    def _check_image_files(self) -> None:
         if len(self._all_files) == 0:
             raise errors.NoImageFilesError(self.folder)
 
@@ -305,7 +305,7 @@ class ImageFolder:
             rois_file.writelines(
                 ['roi: {0}, {1}, {2}, {3}\n'.format(rect._x0, rect._y0, rect._x1, rect._y1) for rect in rects])
 
-    def remove_roi(self):
+    def remove_roi(self) -> None:
         rois_filename = os.path.join(self.folder, 'analysis', 'RoIs')
         temp_filename = os.path.join(self.folder, 'analysis', 'temp')
 
