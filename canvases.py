@@ -9,15 +9,19 @@ import cv2 as cv
 class MainCanvas(QLabel):
     def __init__(self, parent: QWidget) -> None:
         super(MainCanvas, self).__init__(parent)
-        self._w, self._h = 1224, 425
-        self.setMinimumSize(QSize(self._w, self._h))
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self._set_canvas()
+        self._w, self._h = 0, 0
+        # self.set_frame_size(self._w, self._h)
 
     def _set_canvas(self) -> None:
         canvas = QPixmap(self._w, self._h)
         canvas.fill(QColor('transparent'))
         self.setPixmap(canvas)
+
+    def set_frame_size(self, w, h) -> None:
+        self._w, self._h = w / 2, h / 2
+        self.setMinimumSize(QSize(self._w, self._h))
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self._set_canvas()
 
 
 class RoIsCanvas(MainCanvas):
@@ -61,6 +65,7 @@ class PaintingCanvas(MainCanvas):
         self.pen_colour = QColor(colour)
         self.pen_size = 3
         self.is_used = False
+        self.is_cleared = False
         self.brush_erase = False
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
@@ -138,10 +143,6 @@ class ImageFrame(MainCanvas):
         elif self.image is not None:
             painter.drawPixmap(0, 0, self.image)
         painter.end()
-
-    def adjust_frame_size(self, w, h) -> None:
-        self._w, self._h = w, h
-        self._set_canvas()
 
     def _adjust_image(self) -> None:
         im: QImage = self.image.toImage()
@@ -261,20 +262,21 @@ class NNPreviewCanvas(MainCanvas):
         return points
 
     def paintEvent(self, event) -> None:
-        painter = QPainter()
-        painter.begin(self)
+        if self._w > 0 and self._h > 0:
+            painter = QPainter()
+            painter.begin(self)
 
-        p = painter.pen()
-        p.setWidth(self.pen_size)
-        p.setColor(self.pen_color)
-        painter.setPen(p)
-        painter.drawPixmap(0, 0, self.pixmap())
+            p = painter.pen()
+            p.setWidth(self.pen_size)
+            p.setColor(self.pen_color)
+            painter.setPen(p)
+            painter.drawPixmap(0, 0, self.pixmap())
 
-        if self.points:
-            for group in self.points:
-                for point in group:
-                    p = point[0]
-                    p = QPoint(p[0], p[1])
-                    painter.drawPoint(p)
+            if self.points:
+                for group in self.points:
+                    for point in group:
+                        p = point[0]
+                        p = QPoint(p[0], p[1])
+                        painter.drawPoint(p)
 
-        painter.end()
+            painter.end()

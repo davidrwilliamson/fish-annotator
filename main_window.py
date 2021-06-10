@@ -141,13 +141,14 @@ class MainWindow(QMainWindow):
         save: bool = False
         i = 0
         for canvas in self.annotation_canvases:
-            if canvas.is_used:  # Don't bother to save unless something has actually been drawn
+            if canvas.is_used or canvas.is_cleared:  # Don't bother to save unless something has actually been drawn
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
                 canvas.pixmap().save(buffer, 'png')
                 buffer.close()
                 canvases[i] = buffer
                 canvas.erase_all()
+                canvas.is_cleared = False
                 save = True
             i += 1
         if save:
@@ -200,8 +201,13 @@ class MainWindow(QMainWindow):
         if os.path.isdir(save_folder):
             annotations = [file for file in os.listdir(save_folder) if os.path.splitext(file)[1] == '.png']
             for file in annotations:
-                # TODO: This fails with the new names silc_bayer and bayer_silc. Fix comprehension
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
+                underscore_split = os.path.splitext(file)[0].split('_')
+                if len(underscore_split) == 4:
+                    i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
+                elif len(underscore_split) == 3:
+                    i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
+                else:
+                    raise
                 full_path = os.path.join(save_folder, file)
 
                 pmap = QPixmap()
@@ -220,6 +226,13 @@ class MainWindow(QMainWindow):
                         self.saved_canvases[i].append(None)
                 self.saved_canvases[i][j] = buffer
 
+    def adjust_frame_sizes(self, im_folder: ImageFolder) -> None:
+        w, h = im_folder.frame_w, im_folder.frame_h
+        for canvas in [self.image_frame, self.rois_canvas, self.nn_preview_canvas]:
+            canvas.set_frame_size(w, h)
+        for canvas in self.annotation_canvases:
+            canvas.set_frame_size(w, h)
+
     @pyqtSlot()
     def save_ann(self):
         self.save_annotations_mem()
@@ -234,7 +247,7 @@ class MainWindow(QMainWindow):
         self.save_annotations_disk()
 
         self.im_folder = im_folder
-        self.image_frame.adjust_frame_size(im_folder.frame_w / 2, im_folder.frame_h / 2)
+        self.adjust_frame_sizes(im_folder)
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.load_annotations_disk()
         self.load_annotations_mem()
@@ -272,6 +285,11 @@ class MainWindow(QMainWindow):
             self.right_buttons.btn_erase.setChecked(True)
         if idx == ToolBtn.CLEAR:
             ann_layer.erase_all()
+            # Had a bug where if a canvas was cleared and then we changed layers without drawing anything
+            # it would be marked as unused and not saved.
+            # Now we check for is_cleared when saving too, and set it to false after a save.
+            # TODO: We do end up saving blank annotations in this case, though. Should fix.
+            ann_layer.is_cleared = True
             ann_layer.update()
             self.change_tool(ToolBtn.PAINT)
         if idx == ToolBtn.REVERT:

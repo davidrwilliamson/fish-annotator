@@ -71,9 +71,9 @@ class MainMenu(QMenuBar):
 
         # action_preview_rois = QAction('&Preview RoIs', self)
         # action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
-        action_export_rois = QAction('Export &RoIs', self)
+        action_export_rois = QAction('Export cropped &RoIs', self)
         action_export_rois.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_ROIS))
-        action_export_full = QAction('Export &full frames', self)
+        action_export_full = QAction('Export all &full frames', self)
         action_export_full.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_FULL))
         action_export_interesting = QAction('Export only &interesting frames', self)
         action_export_interesting.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_INTERESTING))
@@ -83,9 +83,9 @@ class MainMenu(QMenuBar):
         action_export_current.triggered.connect(lambda: self._call_export(ExportMenu.EXPORT_CURRENT))
 
         # export_menu.addAction(action_preview_rois)
-        self.export_menu.addAction(action_export_rois)
         self.export_menu.addAction(action_export_full)
         self.export_menu.addAction(action_export_interesting)
+        self.export_menu.addAction(action_export_rois)
         self.export_menu.addAction(action_export_montage)
         self.export_menu.addAction(action_export_current)
 
@@ -184,12 +184,14 @@ class MainMenu(QMenuBar):
         try:
             os.mkdir(root_path)
         except FileExistsError:
-            print('Directory {} already exists.'.format(os.path.join(root_path)))
+            pass
+            # print('Directory {} already exists.'.format(os.path.join(root_path)))
 
         try:
             os.mkdir(subfolder)
         except FileExistsError:
-            print('Directory {} already exists.'.format(subfolder))
+            pass
+            # print('Directory {} already exists.'.format(subfolder))
 
         return subfolder
 
@@ -204,6 +206,7 @@ class MainMenu(QMenuBar):
 
             save_path = os.path.join(save_folder, '{}_cropped.png'.format(im_folder.framepos[1]))
             im_save.save(save_path, 'png')
+        print('Saved images to: {}'.format(save_folder))
 
     def export_full_frames(self, im_folder: ImageFolder) -> None:
         save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_FULL)
@@ -215,6 +218,7 @@ class MainMenu(QMenuBar):
 
             save_path = os.path.join(save_folder, '{}_full.png'.format(im_folder.framepos[1]))
             im_raw.save(save_path, 'png')
+        print('Saved images to: {}'.format(save_folder))
 
     def export_montage(self, im_folder: ImageFolder) -> None:
         pass
@@ -230,8 +234,10 @@ class MainMenu(QMenuBar):
 
             save_path = os.path.join(save_folder, '{}_full.png'.format(im_folder.framepos[1]))
             im_raw.save(save_path, 'png')
+        print('Saved images to: {}'.format(save_folder))
 
-    def export_current(self, im_folder: ImageFolder, image_frame: 'ImageFrame', rois_canvas, painting_canvas, nn_preview_canvas) -> None:
+    def export_current(self, im_folder: ImageFolder, image_frame: 'ImageFrame',
+                       rois_canvas, painting_canvas, nn_preview_canvas) -> None:
         save_folder = self._make_export_folder(im_folder.folder, ExportMenu.EXPORT_CURRENT)
         n = 0
         save_path = os.path.join(save_folder, '{}_selected_view_{}.png'.format(im_folder.framepos[1], n))
@@ -245,14 +251,15 @@ class MainMenu(QMenuBar):
             base_im: QImage = image_frame.image.toImage()
 
         im_size = base_im.size()
-        im = base_im.copy()
+        im: QImage = base_im.copy()
         im = im.convertToFormat(QImage.Format_ARGB32)
 
         painter = QPainter(im)
         painter.setCompositionMode(painter.CompositionMode_SourceOver)
         for canvas in [rois_canvas, painting_canvas, nn_preview_canvas]:
             if canvas is not None:
-                canvas_image = canvas.pixmap().toImage()
+                canvas_image: QImage = canvas.pixmap().toImage()
                 painter.drawImage(QRect(QPoint(0, 0), im_size), canvas_image)
         painter.end()
         im.save(save_path, 'png')
+        print('Saved image: {}'.format(save_path))
