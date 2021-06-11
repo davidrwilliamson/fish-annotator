@@ -101,6 +101,10 @@ class MainWindow(QMainWindow):
                 self.change_tool(ToolBtn.ERASE)
             if k_p == Qt.Key_N:
                 self.right_buttons.btn_nn_preview.click()
+            if k_p == Qt.Key_C:
+                self.right_buttons.btn_clear.click()
+            if k_p == Qt.Key_R:
+                self.right_buttons.btn_revert.click()
 
         if self.im_folder:
             if k_p == Qt.Key_BracketLeft:
