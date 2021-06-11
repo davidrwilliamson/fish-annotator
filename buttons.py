@@ -140,11 +140,11 @@ class RightButtons(QWidget):
         # Row 0, Column 0
         lbl_ann_layers = QLabel('Annotation layers')
         lbl_ann_layers.setAlignment(Qt.AlignCenter)
-        self.btn_ann_0 = QPushButton('Myotome (&0)')
-        self.btn_ann_1 = QPushButton('Eyes (&1)')
-        self.btn_ann_2 = QPushButton('Yolk (&2)')
-        self.btn_ann_3 = QPushButton('Embryo (&3)')
-        self.btn_ann_4 = QPushButton('Egg (&4)')
+        self.btn_ann_0 = QPushButton('Myotome (&1)')
+        self.btn_ann_1 = QPushButton('Eyes (&2)')
+        self.btn_ann_2 = QPushButton('Yolk (&3)')
+        self.btn_ann_3 = QPushButton('Embryo (&4)')
+        self.btn_ann_4 = QPushButton('Egg (&5)')
 
         layout_ann_layers.addWidget(lbl_ann_layers, 1)
         layout_ann_layers.addWidget(self.btn_ann_0)
