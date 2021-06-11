@@ -12,16 +12,21 @@ class MainCanvas(QLabel):
         self._w, self._h = 0, 0
         # self.set_frame_size(self._w, self._h)
 
-    def _set_canvas(self) -> None:
-        canvas = QPixmap(self._w, self._h)
-        canvas.fill(QColor('transparent'))
+    def _set_canvas(self, canvas=None) -> None:
+        if canvas is None:
+            canvas = QPixmap(self._w, self._h)
+            canvas.fill(QColor('transparent'))
         self.setPixmap(canvas)
+        self.update()
 
-    def set_frame_size(self, w, h) -> None:
+    def set_frame_size(self, w: int, h: int) -> None:
+        im = self.pixmap()
         self._w, self._h = w / 2, h / 2
+        if im is not None:
+            im = im.scaled(self._w, self._h, Qt.KeepAspectRatioByExpanding)
         self.setMinimumSize(QSize(self._w, self._h))
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self._set_canvas()
+        self._set_canvas(im)
 
 
 class RoIsCanvas(MainCanvas):
@@ -104,6 +109,10 @@ class PaintingCanvas(MainCanvas):
         # Update the origin for next time.
         self.last_x = e.x()
         self.last_y = e.y()
+
+    def pixmap_scaled(self, w: int, h: int) -> QPixmap:
+        im = self.pixmap()
+        return im.scaled(w, h, Qt.KeepAspectRatioByExpanding)
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         self.last_x = None

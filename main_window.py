@@ -120,6 +120,10 @@ class MainWindow(QMainWindow):
             if k_p == Qt.Key_I:
                 checked = self.br_buttons.cb_interest.isChecked()
                 self.toggle_interesting_frame(not checked)
+            if k_p == Qt.Key_Z:
+                zoom_cb = self.bottom_buttons.cb_zoom
+                checked = zoom_cb.isChecked()
+                zoom_cb.setChecked(not checked)
 
     def closeEvent(self, event) -> None:
         self.save_annotations_mem()
@@ -138,14 +142,15 @@ class MainWindow(QMainWindow):
         self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f)
 
     def save_annotations_mem(self) -> None:
+        # The canvas saved to memory is always the full-sized annotation layer
         canvases = [None] * len(self.annotation_canvases)
         save: bool = False
         i = 0
         for canvas in self.annotation_canvases:
-            if canvas.is_used or canvas.is_cleared:  # Don't bother to save unless something has actually been drawn
+            if canvas.is_used: # or canvas.is_cleared:  # Don't bother to save unless something has actually been drawn
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
-                canvas.pixmap().save(buffer, 'png')
+                canvas.pixmap_scaled(self.im_folder.frame_w, self.im_folder.frame_h).save(buffer, 'png')
                 buffer.close()
                 canvases[i] = buffer
                 canvas.erase_all()
@@ -173,6 +178,7 @@ class MainWindow(QMainWindow):
         else:
             for canvas in self.annotation_canvases:
                 canvas.erase_all()
+        # TODO: When we load the full-sized annotation from memory for the first time, we may need to scale them down for display
 
     def save_annotations_disk(self) -> None:
         if self.im_folder is None:
@@ -198,6 +204,7 @@ class MainWindow(QMainWindow):
                         pmap.save(save_path, 'png')
 
     def load_annotations_disk(self) -> None:
+        # Because we save the annotations at full size, when loaded from disk they are also at full size
         save_folder = os.path.join(self.im_folder.folder, 'analysis/annotations')
         if os.path.isdir(save_folder):
             annotations = [file for file in os.listdir(save_folder) if os.path.splitext(file)[1] == '.png']
@@ -227,11 +234,10 @@ class MainWindow(QMainWindow):
                         self.saved_canvases[i].append(None)
                 self.saved_canvases[i][j] = buffer
 
-    def adjust_frame_sizes(self, im_folder: ImageFolder) -> None:
-        w, h = im_folder.frame_w, im_folder.frame_h
-        for canvas in [self.image_frame, self.rois_canvas, self.nn_preview_canvas]:
-            canvas.set_frame_size(w, h)
-        for canvas in self.annotation_canvases:
+    def adjust_frame_sizes(self, w, h) -> None:
+        canvases = [self.image_frame, self.rois_canvas, self.nn_preview_canvas]
+        canvases.extend(self.annotation_canvases)
+        for canvas in canvases:
             canvas.set_frame_size(w, h)
 
     @pyqtSlot()
@@ -248,7 +254,7 @@ class MainWindow(QMainWindow):
         self.save_annotations_disk()
 
         self.im_folder = im_folder
-        self.adjust_frame_sizes(im_folder)
+        self.adjust_frame_sizes(im_folder.frame_w, im_folder.frame_h)
         self.saved_canvases = [None for i in range(im_folder.num_frames)]
         self.load_annotations_disk()
         self.load_annotations_mem()
@@ -416,15 +422,17 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(bool)
     def toggle_zoom(self, checked: bool) -> None:
+        w, h = self.im_folder.frame_w, self.im_folder.frame_h
+        if checked:
+            w *= 2
+            h *= 2
+
         canvases = [self.image_frame, self.rois_canvas, self.nn_preview_canvas]
         canvases.extend(self.annotation_canvases)
         for canvas in canvases:
-            w, h = self.im_folder.frame_w, self.im_folder.frame_h
-            if checked:
-                w *= 2
-                h *= 2
             canvas.set_frame_size(w, h)
         self.change_frame(NavBtn.NOCHANGE)
+        self.adjust_frame_sizes(w, h)
 
     @pyqtSlot(bool)
     def show_bad_frames(self, checked: bool) -> None:

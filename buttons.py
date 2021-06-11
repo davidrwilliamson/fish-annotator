@@ -47,7 +47,7 @@ class BottomButtons(QWidget):
         cb_layout.addWidget(self.cb_zoom, alignment=Qt.AlignRight)
         self.cb_zoom.toggled.connect(self._call_toggle_zoom)
         self.cb_zoom.setChecked(False)
-        self.cb_zoom.setEnabled(False)
+        # self.cb_zoom.setEnabled(False)
 
         bb_layout.addLayout(cb_layout)
 
