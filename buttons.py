@@ -39,11 +39,11 @@ class BottomButtons(QWidget):
         cb_layout = QHBoxLayout()
 
         self.cb_scale_bar = QCheckBox('Show scale bar')
-        cb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
+        # cb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
         self.cb_scale_bar.toggled.connect(self._call_toggle_scale_bar)
         self.cb_scale_bar.setChecked(False)
 
-        self.cb_zoom = QCheckBox('2x zoom')
+        self.cb_zoom = QCheckBox('2x &Zoom')
         cb_layout.addWidget(self.cb_zoom, alignment=Qt.AlignRight)
         self.cb_zoom.toggled.connect(self._call_toggle_zoom)
         self.cb_zoom.setChecked(False)
@@ -140,11 +140,11 @@ class RightButtons(QWidget):
         # Row 0, Column 0
         lbl_ann_layers = QLabel('Annotation layers')
         lbl_ann_layers.setAlignment(Qt.AlignCenter)
-        self.btn_ann_0 = QPushButton('Myotome')
-        self.btn_ann_1 = QPushButton('Eyes')
-        self.btn_ann_2 = QPushButton('Yolk')
-        self.btn_ann_3 = QPushButton('Embryo')
-        self.btn_ann_4 = QPushButton('Egg')
+        self.btn_ann_0 = QPushButton('Myotome (&0)')
+        self.btn_ann_1 = QPushButton('Eyes (&1)')
+        self.btn_ann_2 = QPushButton('Yolk (&2)')
+        self.btn_ann_3 = QPushButton('Embryo (&3)')
+        self.btn_ann_4 = QPushButton('Egg (&4)')
 
         layout_ann_layers.addWidget(lbl_ann_layers, 1)
         layout_ann_layers.addWidget(self.btn_ann_0)
@@ -171,7 +171,7 @@ class RightButtons(QWidget):
         self.btn_bg_im = QPushButton('Background')
         self.btn_bm_im = QPushButton('Binary Mask')
         self.btn_rois = QPushButton('RoIs')
-        self.btn_nn_preview = QPushButton('NN Input Preview')
+        self.btn_nn_preview = QPushButton('&NN Input Preview')
         for btn in [self.btn_raw_im, self.btn_bg_sub, self.btn_bg_im, self.btn_bm_im, self.btn_rois, self.btn_nn_preview]:
             btn.setCheckable(True)
 
@@ -211,10 +211,10 @@ class RightButtons(QWidget):
         self._sldr_brush_size.setValue(2)
         self._sldr_brush_size.valueChanged.connect(self._call_adjust_brush_size)
 
-        self.btn_paint = QPushButton('Paintbrush')
-        self.btn_erase = QPushButton('Erase')
-        self.btn_clear = QPushButton('Clear')
-        self.btn_revert = QPushButton('Revert')
+        self.btn_paint = QPushButton('Paint&brush')
+        self.btn_erase = QPushButton('&Erase')
+        self.btn_clear = QPushButton('&Clear')
+        self.btn_revert = QPushButton('&Revert')
         self.btns_painting = [self.btn_paint, self.btn_erase]
         for btn in self.btns_painting:
             btn.setCheckable(True)
