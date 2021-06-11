@@ -30,15 +30,26 @@ class BottomButtons(QWidget):
     sgnl_adjust_brightness = pyqtSignal(int)
     sgnl_adjust_contrast = pyqtSignal(int)
     sgnl_toggle_scale_bar = pyqtSignal(bool)
+    sgnl_toggle_zoom = pyqtSignal(bool)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(BottomButtons, self).__init__(parent)
         bb_layout = QVBoxLayout(self)
 
+        cb_layout = QHBoxLayout()
+
         self.cb_scale_bar = QCheckBox('Show scale bar')
-        bb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
+        cb_layout.addWidget(self.cb_scale_bar, alignment=Qt.AlignRight)
         self.cb_scale_bar.toggled.connect(self._call_toggle_scale_bar)
         self.cb_scale_bar.setChecked(False)
+
+        self.cb_zoom = QCheckBox('2x zoom')
+        cb_layout.addWidget(self.cb_zoom, alignment=Qt.AlignRight)
+        self.cb_zoom.toggled.connect(self._call_toggle_zoom)
+        self.cb_zoom.setChecked(False)
+        self.cb_zoom.setEnabled(False)
+
+        bb_layout.addLayout(cb_layout)
 
         self.btn_start = QPushButton('Start')
         self.btn_end = QPushButton('End')
@@ -91,10 +102,13 @@ class BottomButtons(QWidget):
     def _call_toggle_scale_bar(self, checked: bool) -> None:
         self.sgnl_toggle_scale_bar.emit(checked)
 
+    def _call_toggle_zoom(self, checked: bool) -> None:
+        self.sgnl_toggle_zoom.emit(checked)
+
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_start, self.btn_end, self.btn_next, self.btn_prev,
-                   self._sldr_brightness, self._sldr_contrast]
+                   self._sldr_brightness, self._sldr_contrast, self.cb_zoom]
         for btn in buttons:
             btn.setEnabled(enable)
 

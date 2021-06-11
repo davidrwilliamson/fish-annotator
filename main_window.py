@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         self.bottom_buttons.sgnl_adjust_brightness.connect(self.adjust_brightness)
         self.bottom_buttons.sgnl_adjust_contrast.connect(self.adjust_contrast)
         self.bottom_buttons.sgnl_toggle_scale_bar.connect(self.toggle_scale_bar)
+        self.bottom_buttons.sgnl_toggle_zoom.connect(self.toggle_zoom)
         self.br_buttons.sgnl_toggle_bad_frame.connect(self.toggle_bad_frame)
         self.br_buttons.sgnl_toggle_interesting_frame.connect(self.toggle_interesting_frame)
         self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
@@ -289,7 +290,9 @@ class MainWindow(QMainWindow):
             # it would be marked as unused and not saved.
             # Now we check for is_cleared when saving too, and set it to false after a save.
             # TODO: We do end up saving blank annotations in this case, though. Should fix.
-            ann_layer.is_cleared = True
+            # ann_layer.is_cleared = True
+            # My "fix" ended up introducing a new bug where annotations are not saved, because we call the clear tool in a few other places.
+            # I guess we need a way to know that a previously not empty annotation has been made empty.
             ann_layer.update()
             self.change_tool(ToolBtn.PAINT)
         if idx == ToolBtn.REVERT:
@@ -410,6 +413,18 @@ class MainWindow(QMainWindow):
             self.scale_bar.setVisible(True)
         else:
             self.scale_bar.setVisible(False)
+
+    @pyqtSlot(bool)
+    def toggle_zoom(self, checked: bool) -> None:
+        canvases = [self.image_frame, self.rois_canvas, self.nn_preview_canvas]
+        canvases.extend(self.annotation_canvases)
+        for canvas in canvases:
+            w, h = self.im_folder.frame_w, self.im_folder.frame_h
+            if checked:
+                w *= 2
+                h *= 2
+            canvas.set_frame_size(w, h)
+        self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(bool)
     def show_bad_frames(self, checked: bool) -> None:
