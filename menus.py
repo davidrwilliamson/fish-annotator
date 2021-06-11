@@ -64,11 +64,11 @@ class MainMenu(QMenuBar):
         action_save.triggered.connect(self._call_save)
 
         file_menu.addAction(action_open)
-        file_menu.addAction(action_save)
+        # file_menu.addAction(action_save)
 
         self.export_menu = self.addMenu('&Export')
         self.export_menu.setEnabled(False)
-
+        self.export_menu.addAction(action_save)
         # action_preview_rois = QAction('&Preview RoIs', self)
         # action_preview_rois.triggered.connect(lambda: self._call_export(ExportMenu.PREVIEW_ROIS))
         action_export_rois = QAction('Export cropped &RoIs', self)

@@ -2,6 +2,7 @@ import numpy as np
 import os
 import re
 import qimage2ndarray as q2n
+from random import randrange, choice
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
 from typing import TextIO, Tuple
@@ -229,6 +230,19 @@ class ImageFolder:
             self.go_to_frame(self._interesting_frames[self._intf_idx])
         else:  # If neither show other or show interesting are checked, do nothing
             pass
+
+    def random_frame(self) -> None:
+        # Go to a random frame in the current context, useful for sampling for annotation
+        if self._show_other and self._show_interesting:
+            f = randrange(self._num_frames)
+        elif self._show_other and not self._show_interesting:
+            f = randrange(self._num_frames)
+            if f in self._interesting_frames or f in self._bad_frames:
+                self.random_frame()
+        elif self._show_interesting and not self._show_other:
+            f0 = randrange(len(self._interesting_frames))
+            f = self._interesting_frames[f0]
+        self.go_to_frame(f)
 
     def toggle_bad_frame(self, checked: bool) -> None:
         if checked:

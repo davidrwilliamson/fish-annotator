@@ -111,6 +111,12 @@ class MainWindow(QMainWindow):
                 self.change_frame(NavBtn.PREV)
             elif k_p == Qt.Key_BracketRight:
                 self.change_frame(NavBtn.NEXT)
+            if k_p == Qt.Key_BraceLeft:
+                self.change_frame(NavBtn.START)
+            if k_p == Qt.Key_BraceRight:
+                self.change_frame(NavBtn.END)
+            if k_p == Qt.Key_Question:
+                self.change_frame(NavBtn.RANDOM)
             if k_p == Qt.Key_1:
                 self.right_buttons.btn_ann_0.click()
             if k_p == Qt.Key_2:
@@ -366,6 +372,8 @@ class MainWindow(QMainWindow):
             self.im_folder.go_to_first_frame()
         elif value is NavBtn.END:
             self.im_folder.go_to_frame(self.im_folder.last_frame)
+        elif value is NavBtn.RANDOM:
+            self.im_folder.random_frame()
 
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:

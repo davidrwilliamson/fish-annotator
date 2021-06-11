@@ -23,6 +23,7 @@ class NavBtn(IntEnum):
     PREV = 2
     NEXT = 3
     NOCHANGE = 4
+    RANDOM = 5
 
 
 class BottomButtons(QWidget):
@@ -51,21 +52,24 @@ class BottomButtons(QWidget):
 
         bb_layout.addLayout(cb_layout)
 
-        self.btn_start = QPushButton('Start')
-        self.btn_end = QPushButton('End')
-        self.btn_prev = QPushButton('Previous')
-        self.btn_next = QPushButton('Next')
+        self.btn_start = QPushButton('Start (&{)')
+        self.btn_end = QPushButton('End (&})')
+        self.btn_prev = QPushButton('Previous (&[)')
+        self.btn_next = QPushButton('Next (&])')
+        self.btn_rand = QPushButton('Random (&?)')
 
         layout_buttons = QHBoxLayout()
         layout_buttons.addWidget(self.btn_start)
         layout_buttons.addWidget(self.btn_prev)
         layout_buttons.addWidget(self.btn_next)
         layout_buttons.addWidget(self.btn_end)
+        layout_buttons.addWidget(self.btn_rand)
 
         self.btn_prev.clicked.connect(lambda: self._call_change(NavBtn.PREV))
         self.btn_next.clicked.connect(lambda: self._call_change(NavBtn.NEXT))
         self.btn_start.clicked.connect(lambda: self._call_change(NavBtn.START))
         self.btn_end.clicked.connect(lambda: self._call_change(NavBtn.END))
+        self.btn_rand.clicked.connect(lambda: self._call_change(NavBtn.RANDOM))
 
         lbl_brightness = QLabel('Brightness')
         lbl_contrast = QLabel('Contrast')
@@ -107,7 +111,7 @@ class BottomButtons(QWidget):
 
     def enable_buttons(self, enable: bool = True) -> None:
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
-        buttons = [self.btn_start, self.btn_end, self.btn_next, self.btn_prev,
+        buttons = [self.btn_start, self.btn_end, self.btn_next, self.btn_prev, self.btn_rand,
                    self._sldr_brightness, self._sldr_contrast, self.cb_zoom]
         for btn in buttons:
             btn.setEnabled(enable)
