@@ -31,6 +31,8 @@ class ImageFolder:
         self._bad_idx = 0
         self.frame_w, self.frame_h = self._get_frame_size()
 
+        self.annotations = self.count_annotations()
+
         if self._interesting_frames:
             self._intf_idx = 0
             self._curr_frame_no = self._interesting_frames[self._intf_idx]
@@ -181,6 +183,23 @@ class ImageFolder:
                     return i
         elif self._show_interesting and not self._show_other:
             return self._interesting_frames[-1]
+
+    def count_annotations(self) -> list:
+        ann_folder = os.path.join(self.folder, 'analysis/annotations')
+        annotations = [file for file in os.listdir(ann_folder) if os.path.splitext(file)[1] == '.png']
+        ann_types = [[], [], [], [], []]
+        for file in annotations:
+            underscore_split = os.path.splitext(file)[0].split('_')
+            if len(underscore_split) == 4:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
+            elif len(underscore_split) == 3:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
+            else:
+                raise
+            ann_types[j].append(i)
+
+        return ann_types
+
 
     def go_to_frame(self, frame: int) -> None:
         if (frame >= 0) and (frame <= self.num_frames):

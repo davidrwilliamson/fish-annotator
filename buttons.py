@@ -353,6 +353,7 @@ class LeftButtons(QWidget):
         self.lbl_frames = QLabel('\n')
         self.lbl_interesting_frames = QLabel('\n')
         self.lbl_bad_frames = QLabel('\n')
+        self.lbl_annotations = QLabel('\n')
 
         self.cb_bad = QCheckBox('Show bad frames')
         self.cb_interest = QCheckBox('Show interesting frames')
@@ -368,6 +369,7 @@ class LeftButtons(QWidget):
         lb_layout.addWidget(self.lbl_frames)
         lb_layout.addWidget(self.lbl_interesting_frames)
         lb_layout.addWidget(self.lbl_bad_frames)
+        lb_layout.addWidget(self.lbl_annotations)
 
         lb_layout.addWidget(self.cb_interest)
         lb_layout.addWidget(self.cb_other)
@@ -385,10 +387,12 @@ class LeftButtons(QWidget):
         if option == FrameToggle.OTHER:
             self.sgnl_toggle_other_frames.emit(checked)
 
-    def update_labels(self, num_frames, cf_no, i_f, b_f) -> None:
+    def update_labels(self, num_frames, cf_no, i_f, b_f, ann) -> None:
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
         self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
+        self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}'
+                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4])))
 
     def enable_buttons(self, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
         self.cb_bad.setEnabled(True)

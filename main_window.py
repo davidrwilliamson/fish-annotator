@@ -149,7 +149,8 @@ class MainWindow(QMainWindow):
         # TODO: Expose non-protected properties in ImageFolder for this, and/or find a nicer way to update these labels
         i_f = len(self.im_folder._interesting_frames)
         b_f = len(self.im_folder._bad_frames)
-        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f)
+        ann = self.im_folder.annotations
+        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f, ann)
 
     def save_annotations_mem(self) -> None:
         # The canvas saved to memory is always the full-sized annotation layer
@@ -157,7 +158,7 @@ class MainWindow(QMainWindow):
         save: bool = False
         i = 0
         for canvas in self.annotation_canvases:
-            if canvas.is_used: # or canvas.is_cleared:  # Don't bother to save unless something has actually been drawn
+            if canvas.is_used:  # or canvas.is_cleared:  # Don't bother to save unless something has actually been drawn
                 buffer = QBuffer()
                 buffer.open(QIODevice.ReadWrite)
                 canvas.pixmap_scaled(self.im_folder.frame_w, self.im_folder.frame_h).save(buffer, 'png')
@@ -168,7 +169,16 @@ class MainWindow(QMainWindow):
                 save = True
             i += 1
         if save:
-            self.saved_canvases[self.im_folder.framepos[0]] = canvases
+            idx = self.im_folder.framepos[0]
+            self.saved_canvases[idx] = canvases
+            # Update im_folder.annotations with the indices of saved canvases
+            k = 0
+            for j in self.saved_canvases[idx]:
+                if j is not None:
+                    self.im_folder.annotations[k].append(idx)
+                    self.im_folder.annotations[k] = np.unique(self.im_folder.annotations[k]).tolist()
+                k += 1
+            self.update_lbl_frame()
 
     def load_annotations_mem(self) -> None:
         k = self.im_folder.framepos[0]
@@ -274,7 +284,8 @@ class MainWindow(QMainWindow):
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
-        self.left_buttons.enable_buttons(self.im_folder._show_bad, self.im_folder._show_other, self.im_folder._show_interesting)
+        self.left_buttons.enable_buttons(self.im_folder._show_bad, self.im_folder._show_other,
+                                         self.im_folder._show_interesting)
         self.main_menu.enable_export()
 
     @pyqtSlot(int)
@@ -480,7 +491,8 @@ class MainWindow(QMainWindow):
         elif option == ExportMenu.EXPORT_INTERESTING:
             self.main_menu.export_interesting(self.im_folder)
         elif option == ExportMenu.EXPORT_CURRENT:
-            self.main_menu.export_current(self.im_folder, self.image_frame, self.rois_canvas, self.annotation_canvases[self.curr_ann_layer], self.nn_preview_canvas)
+            self.main_menu.export_current(self.im_folder, self.image_frame, self.rois_canvas,
+                                          self.annotation_canvases[self.curr_ann_layer], self.nn_preview_canvas)
 
     @pyqtSlot(IntEnum)
     def analysis_menu(self, option: IntEnum) -> None:
@@ -536,7 +548,7 @@ class ScaleBar(QLabel):
 
     def _draw_bars(self) -> None:
         painter = QPainter(self.pixmap())
-        painter.setPen(QPen(QColor('black'),  1, Qt.SolidLine))
+        painter.setPen(QPen(QColor('black'), 1, Qt.SolidLine))
         painter.setBrush(QColor('white'))
         # Mot filled
         painter.drawRect(10, 25, 10, 10)
