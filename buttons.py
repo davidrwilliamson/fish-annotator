@@ -15,6 +15,7 @@ class ToolBtn(IntEnum):
     ERASE = 1
     CLEAR = 2
     REVERT = 3
+    ELLIPSE = 4
 
 
 class NavBtn(IntEnum):
@@ -217,9 +218,10 @@ class RightButtons(QWidget):
 
         self.btn_paint = QPushButton('Paint&brush')
         self.btn_erase = QPushButton('&Erase')
+        self.btn_ellipse = QPushButton('Ellipse')
         self.btn_clear = QPushButton('&Clear')
         self.btn_revert = QPushButton('&Revert')
-        self.btns_painting = [self.btn_paint, self.btn_erase]
+        self.btns_painting = [self.btn_paint, self.btn_erase, self.btn_ellipse]
         for btn in self.btns_painting:
             btn.setCheckable(True)
 
@@ -228,11 +230,13 @@ class RightButtons(QWidget):
         layout_paint_tools.addWidget(self._sldr_brush_size)
         layout_paint_tools.addWidget(self.btn_paint)
         layout_paint_tools.addWidget(self.btn_erase)
+        layout_paint_tools.addWidget(self.btn_ellipse)
         layout_paint_tools.addWidget(self.btn_clear)
         layout_paint_tools.addWidget(self.btn_revert)
 
         self.btn_paint.clicked.connect(lambda: self._call_change_tool(ToolBtn.PAINT))
         self.btn_erase.clicked.connect(lambda: self._call_change_tool(ToolBtn.ERASE))
+        self.btn_ellipse.clicked.connect(lambda: self._call_change_tool(ToolBtn.ELLIPSE))
         self.btn_clear.clicked.connect(lambda: self._call_change_tool(ToolBtn.CLEAR))
         self.btn_revert.clicked.connect(lambda: self._call_change_tool(ToolBtn.REVERT))
 
@@ -275,7 +279,7 @@ class RightButtons(QWidget):
         """Sets all buttons to enabled (by default) or disable (if passed False as argument)."""
         buttons = [self.btn_ann_0, self.btn_ann_1, self.btn_ann_2, self.btn_ann_3, self.btn_ann_4,
                    self.btn_raw_im, self.btn_bg_im, self.btn_bm_im, self.btn_bg_sub, self.btn_rois, self.btn_nn_preview,
-                   self.btn_paint, self.btn_erase, self.btn_clear, self.btn_revert,
+                   self.btn_paint, self.btn_erase, self.btn_ellipse, self.btn_clear, self.btn_revert,
                    self._sldr_brush_size]
         for btn in selection:
             buttons[btn].setEnabled(enable)

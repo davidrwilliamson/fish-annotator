@@ -81,40 +81,65 @@ class PaintingCanvas(MainCanvas):
         self.is_cleared = False
         self.brush_erase = False
 
+        self.drawing_ellipse = False
+        self.ellipse_one = True
+        self.ellipse_two = False
+        self.ellipse = [None, None, None, None]  # left, top, width, height
+        self.ellipse_pixmap = None
+
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
-        if self.last_x is None:  # First event.
+        if self.drawing_ellipse:
             self.last_x = e.x()
             self.last_y = e.y()
-            return  # Ignore the first time.
-
-        painter = QPainter(self.pixmap())
-        # Would like to have semi-transparent annotation overlays without painting looking bad
-        # p.setOpacity(0.5) after pen is set looks bad.
-        # painter.setCompositionMode(QPainter.CompositionMode_Overlay) doesn't seem to do anything useful?
-        p = painter.pen()
-        p.setWidth(self.pen_size)
-        if self.brush_erase:
-            painter.setCompositionMode(QPainter.CompositionMode_Clear)
-            p.setColor(QColor('transparent'))
+            if self.ellipse_one:
+                self.ellipse[0] = self.last_x
+                self.ellipse[1] = self.last_y
+                self.ellipse_one = False
+                self.ellipse_two = True
+            elif self.ellipse_two:
+                self.ellipse[2] = self.last_x - self.ellipse[0]
+                self.ellipse[3] = self.last_y - self.ellipse[1]
+            if np.all([i is not None for i in self.ellipse]):
+                self.draw_ellipse()
         else:
-            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-            p.setColor(self.pen_colour)
-        painter.setPen(p)
-        painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
-        painter.end()
-        self.update()
+            if self.last_x is None:  # First event.
+                self.last_x = e.x()
+                self.last_y = e.y()
+                return  # Ignore the first time.
 
-        self.is_used = True  # Mark if the canvas has anything drawn on it
+            painter = QPainter(self.pixmap())
+            # Would like to have semi-transparent annotation overlays without painting looking bad
+            # p.setOpacity(0.5) after pen is set looks bad.
+            # painter.setCompositionMode(QPainter.CompositionMode_Overlay) doesn't seem to do anything useful?
+            p = painter.pen()
+            p.setWidth(self.pen_size)
+            if self.brush_erase:
+                painter.setCompositionMode(QPainter.CompositionMode_Clear)
+                p.setColor(QColor('transparent'))
+            else:
+                painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+                p.setColor(self.pen_colour)
+            painter.setPen(p)
+            painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
+            painter.end()
+            self.update()
 
-        # Update the origin for next time.
-        self.last_x = e.x()
-        self.last_y = e.y()
+            self.is_used = True  # Mark if the canvas has anything drawn on it
+
+            # Update the origin for next time.
+            self.last_x = e.x()
+            self.last_y = e.y()
 
     def pixmap_scaled(self, w: int, h: int) -> QPixmap:
         im = self.pixmap()
         return im.scaled(w, h, Qt.KeepAspectRatioByExpanding)
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
+        if self.drawing_ellipse:
+            self.ellipse_one = True
+            self.ellipse_two = False
+
+            # ellipse_
         self.last_x = None
         self.last_y = None
 
@@ -134,13 +159,28 @@ class PaintingCanvas(MainCanvas):
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
         p = painter.pen()
         p.setColor(self.pen_colour)
-        p.setWidth(1)
+        p.setWidth(2)
         painter.setPen(p)
         painter.drawEllipse(c, r, r)
         painter.end()
         self.update()
 
         self.is_used = True
+
+    def draw_ellipse(self,) -> None:
+        self.ellipse_pixmap = QPixmap(self._w, self._h)
+        self.ellipse_pixmap.fill(QColor('transparent'))
+        painter = QPainter(self.ellipse_pixmap)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        p = painter.pen()
+        p.setColor(self.pen_colour)
+        p.setWidth(2)
+        painter.setPen(p)
+        painter.drawEllipse(self.ellipse[0], self.ellipse[1], self.ellipse[2], self.ellipse[3])
+        painter.end()
+
+        self.setPixmap(self.ellipse_pixmap)
+        self.update()
 
     def paintEvent(self, event) -> None:
         if self._w > 0 and self._h > 0:
