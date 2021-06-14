@@ -308,13 +308,13 @@ class MainWindow(QMainWindow):
             self.right_buttons.btn_paint.setChecked(True)
             self.right_buttons.btn_erase.setChecked(False)
             self.right_buttons.btn_ellipse.setChecked(False)
-            ann_layer.drawing_ellipse = False
+            ann_layer.toggle_ellipse_drawing(False)
         if idx == ToolBtn.ERASE:
             ann_layer.brush_erase = True
             self.right_buttons.btn_paint.setChecked(False)
             self.right_buttons.btn_erase.setChecked(True)
             self.right_buttons.btn_ellipse.setChecked(False)
-            ann_layer.drawing_ellipse = False
+            ann_layer.toggle_ellipse_drawing(False)
         if idx == ToolBtn.CLEAR:
             ann_layer.erase_all()
             # Had a bug where if a canvas was cleared and then we changed layers without drawing anything
@@ -330,12 +330,11 @@ class MainWindow(QMainWindow):
             self.load_annotations_mem()
             ann_layer.update()
         if idx == ToolBtn.ELLIPSE:
+            ann_layer.brush_erase = False
             self.right_buttons.btn_paint.setChecked(False)
             self.right_buttons.btn_erase.setChecked(False)
-            ann_layer.brush_erase = False
             checked = self.right_buttons.btn_ellipse.isChecked()
-            ann_layer.drawing_ellipse = checked
-            # self.right_buttons.btn_ellipse.setChecked(not checked)
+            ann_layer.toggle_ellipse_drawing(checked)
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:

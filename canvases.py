@@ -81,26 +81,27 @@ class PaintingCanvas(MainCanvas):
         self.is_cleared = False
         self.brush_erase = False
 
+        self.ellipse_mode = False  # Activating this turns on guides and allows us to click to start drawing
         self.drawing_ellipse = False
-        self.ellipse_one = True
-        self.ellipse_two = False
+        self.ellipse_ready = True  # False after we click the first point of the ellipse
         self.ellipse = [None, None, None, None]  # left, top, width, height
-        self.ellipse_pixmap = None
+        self.ellipse_guides = None
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
-        if self.drawing_ellipse:
+        if self.ellipse_mode:
             self.last_x = e.x()
             self.last_y = e.y()
-            if self.ellipse_one:
-                self.ellipse[0] = self.last_x
-                self.ellipse[1] = self.last_y
-                self.ellipse_one = False
-                self.ellipse_two = True
-            elif self.ellipse_two:
-                self.ellipse[2] = self.last_x - self.ellipse[0]
-                self.ellipse[3] = self.last_y - self.ellipse[1]
-            if np.all([i is not None for i in self.ellipse]):
-                self.draw_ellipse()
+            if self.drawing_ellipse:
+                if self.ellipse_ready:
+                    self.ellipse[0] = self.last_x
+                    self.ellipse[1] = self.last_y
+                    self.ellipse_ready = False
+                else:
+                    self.ellipse[2] = self.last_x - self.ellipse[0]
+                    self.ellipse[3] = self.last_y - self.ellipse[1]
+                if np.all([i is not None for i in self.ellipse]):
+                    self.draw_ellipse()
+            self.draw_guides()
         else:
             if self.last_x is None:  # First event.
                 self.last_x = e.x()
@@ -134,12 +135,23 @@ class PaintingCanvas(MainCanvas):
         im = self.pixmap()
         return im.scaled(w, h, Qt.KeepAspectRatioByExpanding)
 
+    def toggle_ellipse_drawing(self, checked) -> None:
+        self.setMouseTracking(checked)
+        self.ellipse_mode = checked
+        if not checked:
+            self.ellipse_guides = QPixmap(self._w, self._h)
+            self.ellipse_guides.fill(QColor('transparent'))
+            self.update()
+            self.last_x = None
+            self.last_y = None
+
+    def mousePressEvent(self, e: QMouseEvent) -> None:
+        if self.ellipse_mode:
+            self.drawing_ellipse = not self.drawing_ellipse
+
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         if self.drawing_ellipse:
-            self.ellipse_one = True
-            self.ellipse_two = False
-
-            # ellipse_
+            self.ellipse_ready = True
         self.last_x = None
         self.last_y = None
 
@@ -168,9 +180,9 @@ class PaintingCanvas(MainCanvas):
         self.is_used = True
 
     def draw_ellipse(self,) -> None:
-        self.ellipse_pixmap = QPixmap(self._w, self._h)
-        self.ellipse_pixmap.fill(QColor('transparent'))
-        painter = QPainter(self.ellipse_pixmap)
+        ellipse_pixmap = QPixmap(self._w, self._h)
+        ellipse_pixmap.fill(QColor('transparent'))
+        painter = QPainter(ellipse_pixmap)
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
         p = painter.pen()
         p.setColor(self.pen_colour)
@@ -179,7 +191,25 @@ class PaintingCanvas(MainCanvas):
         painter.drawEllipse(self.ellipse[0], self.ellipse[1], self.ellipse[2], self.ellipse[3])
         painter.end()
 
-        self.setPixmap(self.ellipse_pixmap)
+        self.setPixmap(ellipse_pixmap)
+        self.update()
+
+        self.is_used = True
+
+    def draw_guides(self) -> None:
+        self.ellipse_guides = QPixmap(self._w, self._h)
+        self.ellipse_guides.fill(QColor('transparent'))
+        painter = QPainter(self.ellipse_guides)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        p = painter.pen()
+        p.setColor(QColor('black'))
+        p.setStyle(Qt.DotLine)
+        p.setWidth(1)
+        painter.setPen(p)
+        painter.drawLine(0, self.last_y, self._w, self.last_y)
+        painter.drawLine(self.last_x, 0, self.last_x, self._h)
+        painter.end()
+
         self.update()
 
     def paintEvent(self, event) -> None:
@@ -188,6 +218,8 @@ class PaintingCanvas(MainCanvas):
             painter.begin(self)
 
             painter.drawPixmap(0, 0, self.pixmap())
+            if self.ellipse_mode:
+                painter.drawPixmap(0, 0, self.ellipse_guides)
             painter.end()
 
 
