@@ -218,7 +218,7 @@ class RightButtons(QWidget):
 
         self.btn_paint = QPushButton('Paint&brush')
         self.btn_erase = QPushButton('&Erase')
-        self.btn_ellipse = QPushButton('Ellipse')
+        self.btn_ellipse = QPushButton('E&llipse')
         self.btn_clear = QPushButton('&Clear')
         self.btn_revert = QPushButton('&Revert')
         self.btns_painting = [self.btn_paint, self.btn_erase, self.btn_ellipse]

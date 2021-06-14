@@ -99,6 +99,8 @@ class MainWindow(QMainWindow):
                 self.change_tool(ToolBtn.PAINT)
             elif k_p == Qt.Key_E:
                 self.change_tool(ToolBtn.ERASE)
+            elif k_p == Qt.Key_L:
+                self.change_tool(ToolBtn.ELLIPSE)
             if k_p == Qt.Key_N:
                 self.right_buttons.btn_nn_preview.click()
             if k_p == Qt.Key_C:
