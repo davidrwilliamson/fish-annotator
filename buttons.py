@@ -8,6 +8,7 @@ class FrameToggle(IntEnum):
     BAD = 0
     INTERESTING = 1
     OTHER = 2
+    ANNOTATED = 3
 
 
 class ToolBtn(IntEnum):
@@ -359,10 +360,12 @@ class LeftButtons(QWidget):
         self.lbl_bad_frames = QLabel('\n')
         self.lbl_annotations = QLabel('\n')
 
+        self.cb_annotated = QCheckBox('Show only annotated')
         self.cb_bad = QCheckBox('Show bad frames')
         self.cb_interest = QCheckBox('Show interesting frames')
         self.cb_other = QCheckBox('Show other frames')
 
+        self.cb_annotated.setTristate(False)
         self.cb_bad.setTristate(False)
         self.cb_interest.setTristate(False)
         self.cb_other.setTristate(False)
@@ -379,6 +382,7 @@ class LeftButtons(QWidget):
         lb_layout.addWidget(self.cb_other)
         lb_layout.addWidget(self.cb_bad)
 
+        self.cb_annotated.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.ANNOTATED))
         self.cb_bad.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.BAD))
         self.cb_interest.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.INTERESTING))
         self.cb_other.toggled.connect(lambda checked: self._call_toggled(checked, FrameToggle.OTHER))
@@ -395,10 +399,14 @@ class LeftButtons(QWidget):
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
         self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
-        self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}'
-                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4])))
+        self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}\n  '
+                                    'Total  {} '
+                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), ann[5]))
 
-    def enable_buttons(self, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
+    def enable_buttons(self, show_annotated: bool, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
+        self.cb_annotated.setEnabled(True)
+        self.cb_annotated.setChecked(show_annotated)
+
         self.cb_bad.setEnabled(True)
         self.cb_bad.setChecked(show_bad)
 

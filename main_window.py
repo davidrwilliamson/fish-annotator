@@ -177,8 +177,7 @@ class MainWindow(QMainWindow):
             k = 0
             for j in self.saved_canvases[idx]:
                 if j is not None:
-                    self.im_folder.annotations[k].append(idx)
-                    self.im_folder.annotations[k] = np.unique(self.im_folder.annotations[k]).tolist()
+                    self.im_folder.update_annotations(k, idx)
                 k += 1
             self.update_lbl_frame()
 
@@ -286,8 +285,8 @@ class MainWindow(QMainWindow):
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
-        self.left_buttons.enable_buttons(self.im_folder._show_bad, self.im_folder._show_other,
-                                         self.im_folder._show_interesting)
+        self.left_buttons.enable_buttons(self.im_folder._show_only_annotated, self.im_folder._show_bad,
+                                         self.im_folder._show_other, self.im_folder._show_interesting)
         self.main_menu.enable_export()
 
     @pyqtSlot(int)
@@ -335,8 +334,8 @@ class MainWindow(QMainWindow):
             ann_layer.brush_erase = False
             self.right_buttons.btn_paint.setChecked(False)
             self.right_buttons.btn_erase.setChecked(False)
-            checked = self.right_buttons.btn_ellipse.isChecked()
-            ann_layer.toggle_ellipse_drawing(checked)
+            self.right_buttons.btn_ellipse.setChecked(True)
+            ann_layer.toggle_ellipse_drawing(True)
 
     @pyqtSlot(bool, int)
     def change_ann_layer(self, checked: bool, ann_idx: int) -> None:

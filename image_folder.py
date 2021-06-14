@@ -9,6 +9,34 @@ from typing import TextIO, Tuple
 import errors
 
 
+class Frame:
+    def __init__(self, idx):
+        self.idx = idx
+        self.annotated = False
+        self.bad = False
+        self.interesting = False
+
+    def set_bad(self, checked):
+        if checked:
+            self.bad = True
+            self.interesting = False
+            self.annotated = False
+        else:
+            self.bad = False
+
+    def set_interesting(self, checked):
+        if checked:
+            self.bad = False
+            self.interesting = True
+        else:
+            self.interesting = False
+
+    def set_annotated(self, checked):
+        if checked:
+            self.interesting = True
+        self.annotated = checked
+
+
 class ImageFolder:
     def __init__(self, folder: str) -> None:
         self.folder = folder
@@ -18,6 +46,8 @@ class ImageFolder:
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
         self._check_image_files()
 
+        self._frames = []
+        self._annotated_frames = []
         self._interesting_frames = []
         self._bad_frames = []
         self._rois = [None] * len(self._all_files)
@@ -36,11 +66,13 @@ class ImageFolder:
         if self._interesting_frames:
             self._intf_idx = 0
             self._curr_frame_no = self._interesting_frames[self._intf_idx]
+            self._show_only_annotated = False
             self._show_bad = False
             self._show_interesting = True
             self._show_other = False
         else:
             self._curr_frame_no = 0
+            self._show_only_annotated = False
             self._show_bad = False
             self._show_interesting = False
             self._show_other = True
@@ -198,8 +230,21 @@ class ImageFolder:
                 raise
             ann_types[j].append(i)
 
+        total_annotated = 0
+        for i in range(5):
+            total_annotated += len(ann_types[i])
+        ann_types.append(total_annotated)
+
         return ann_types
 
+    def update_annotations(self, k, idx) -> None:
+        if k and idx:
+            self.annotations[k].append(idx)
+            self.annotations[k] = np.unique(self.annotations[k]).tolist()
+        total_annotated = 0
+        for i in range(5):
+            total_annotated += len(self.annotations[i])
+        self.annotations[5] = total_annotated
 
     def go_to_frame(self, frame: int) -> None:
         if (frame >= 0) and (frame <= self.num_frames):
@@ -291,6 +336,16 @@ class ImageFolder:
                 self._interesting_frames.remove(self._curr_frame_no)
                 if not self._show_other:
                     self.next_frame()
+
+    def toggle_show_annotated(self, checked: bool) -> None:
+        if self.annotations[5] > 0:
+            if checked:
+                self._show_bad = False
+                self._show_other = False
+                self._show_interesting = True
+            self._show_only_annotated = checked
+            self.next_frame()
+            self.prev_frame()
 
     def toggle_show_bad(self, checked: bool) -> None:
         self._show_bad = checked
