@@ -10,11 +10,23 @@ import errors
 
 
 class Frame:
-    def __init__(self, idx):
+    def __init__(self, idx, filename):
         self.idx = idx
         self.annotated = False
         self.bad = False
         self.interesting = False
+        self.filename = filename
+
+    def __str__(self):
+        return 'Frame {}'.format(self.idx)
+
+    def __repr__(self):
+        return 'Frame {}\n' \
+               '  filename: {}\n' \
+               '  annotated: {}\n' \
+               '  bad: {}\n' \
+               '  interesting: {}\n'\
+            .format(self.idx, self.filename, self.annotated, self.bad, self.interesting)
 
     def set_bad(self, checked):
         if checked:
@@ -46,7 +58,7 @@ class ImageFolder:
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
         self._check_image_files()
 
-        self._frames = []
+        self._frames = [Frame(i, self._all_files[i]) for i in range(len(self._all_files))]
         self._annotated_frames = []
         self._interesting_frames = []
         self._bad_frames = []
@@ -61,7 +73,7 @@ class ImageFolder:
         self._bad_idx = 0
         self.frame_w, self.frame_h = self._get_frame_size()
 
-        self.annotations = self.count_annotations()
+        self.annotations = self._list_annotations()
 
         if self._interesting_frames:
             self._intf_idx = 0
@@ -121,6 +133,7 @@ class ImageFolder:
                 if f:
                     fn = line.split(': ')[1].strip()
                     self._interesting_frames.append(self._all_files.index(fn))
+                    self._frames[self._all_files.index(fn)].set_interesting(True)
         self._interesting_frames.sort()
 
         if bad_frames_file:
@@ -129,6 +142,7 @@ class ImageFolder:
                 if f:
                     fn = line.split(': ')[1].strip()
                     self._bad_frames.append(self._all_files.index(fn))
+                    self._frames[self._all_files.index(fn)].set_bad(True)
         self._bad_frames.sort()
 
     def _list_rois(self) -> None:
@@ -149,6 +163,27 @@ class ImageFolder:
                     else:
                         print('Unexpected line in RoIs file.')
             self._rois[self._all_files.index(fn)] = roi
+
+    def _list_annotations(self) -> list:
+        ann_folder = os.path.join(self.folder, 'analysis/annotations')
+        annotations = [file for file in os.listdir(ann_folder) if os.path.splitext(file)[1] == '.png']
+        ann_types = [[], [], [], [], []]
+        for file in annotations:
+            underscore_split = os.path.splitext(file)[0].split('_')
+            if len(underscore_split) == 4:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
+            elif len(underscore_split) == 3:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
+            else:
+                raise
+            ann_types[j].append(i)
+
+        total_annotated = 0
+        for i in range(5):
+            total_annotated += len(ann_types[i])
+        ann_types.append(total_annotated)
+
+        return ann_types
 
     @property
     def curr_files(self) -> Tuple[str, str, str]:
@@ -215,27 +250,6 @@ class ImageFolder:
                     return i
         elif self._show_interesting and not self._show_other:
             return self._interesting_frames[-1]
-
-    def count_annotations(self) -> list:
-        ann_folder = os.path.join(self.folder, 'analysis/annotations')
-        annotations = [file for file in os.listdir(ann_folder) if os.path.splitext(file)[1] == '.png']
-        ann_types = [[], [], [], [], []]
-        for file in annotations:
-            underscore_split = os.path.splitext(file)[0].split('_')
-            if len(underscore_split) == 4:
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
-            elif len(underscore_split) == 3:
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
-            else:
-                raise
-            ann_types[j].append(i)
-
-        total_annotated = 0
-        for i in range(5):
-            total_annotated += len(ann_types[i])
-        ann_types.append(total_annotated)
-
-        return ann_types
 
     def update_annotations(self, k, idx) -> None:
         if k and idx:
@@ -447,10 +461,12 @@ class ImageFolder:
             with open(bad_frames_filename, 'wt') as f:
                 f.write('filename: {}\n'.format(fname))
 
+        self._frames[self._curr_frame_no].bad = True
         self._bad_frames.append(self._curr_frame_no)
         self._bad_frames.sort()
 
     def _remove_bad_frame(self) -> None:
+        self._frames[self._curr_frame_no].bad = False
         self._bad_frames.remove(self._curr_frame_no)
 
         # TODO: Remove bad frame line from bad frames file
