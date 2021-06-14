@@ -395,13 +395,13 @@ class LeftButtons(QWidget):
         if option == FrameToggle.OTHER:
             self.sgnl_toggle_other_frames.emit(checked)
 
-    def update_labels(self, num_frames, cf_no, i_f, b_f, ann) -> None:
+    def update_labels(self, num_frames, cf_no, i_f, b_f, ann, a_f) -> None:
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
         self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
         self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}\n  '
                                     'Total  {} '
-                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), ann[5]))
+                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), a_f))
 
     def enable_buttons(self, show_annotated: bool, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
         self.cb_annotated.setEnabled(True)

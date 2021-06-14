@@ -148,11 +148,11 @@ class MainWindow(QMainWindow):
         self.lbl_frame.setText('Folder:  {}\nFile:      {}'.format(folder, cf_fn))
         # self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
 
-        # TODO: Expose non-protected properties in ImageFolder for this, and/or find a nicer way to update these labels
-        i_f = len(self.im_folder._interesting_frames)
-        b_f = len(self.im_folder._bad_frames)
+        i_f = self.im_folder.num_interesting
+        b_f = self.im_folder.num_bad
+        a_f = self.im_folder.num_annotated
         ann = self.im_folder.annotations
-        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f, ann)
+        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f, ann, a_f)
 
     def save_annotations_mem(self) -> None:
         # The canvas saved to memory is always the full-sized annotation layer
@@ -285,7 +285,7 @@ class MainWindow(QMainWindow):
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
-        self.left_buttons.enable_buttons(self.im_folder._show_only_annotated, self.im_folder._show_bad,
+        self.left_buttons.enable_buttons(self.im_folder._show_annotated, self.im_folder._show_bad,
                                          self.im_folder._show_other, self.im_folder._show_interesting)
         self.main_menu.enable_export()
 
@@ -408,11 +408,11 @@ class MainWindow(QMainWindow):
 
         # This is a gross hack that should be fixed/removed,
         # but I want to make sure that boxes are checked correctly when a frame is loaded
-        if self.im_folder.framepos[0] in self.im_folder._interesting_frames:
+        if self.im_folder._frames[self.im_folder.framepos[0]].interesting:
             self.br_buttons.cb_interest.setChecked(True)
         else:
             self.br_buttons.cb_interest.setChecked(False)
-        if self.im_folder.framepos[0] in self.im_folder._bad_frames:
+        if self.im_folder._frames[self.im_folder.framepos[0]].bad:
             self.br_buttons.cb_bad.setChecked(True)
         else:
             self.br_buttons.cb_bad.setChecked(False)
