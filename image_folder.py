@@ -9,34 +9,6 @@ from typing import TextIO, Tuple
 import errors
 
 
-class Frame:
-    def __init__(self, idx):
-        self.idx = idx
-        self.annotated = False
-        self.bad = False
-        self.interesting = False
-
-    def set_bad(self, checked):
-        if checked:
-            self.bad = True
-            self.interesting = False
-            self.annotated = False
-        else:
-            self.bad = False
-
-    def set_interesting(self, checked):
-        if checked:
-            self.bad = False
-            self.interesting = True
-        else:
-            self.interesting = False
-
-    def set_annotated(self, checked):
-        if checked:
-            self.interesting = True
-        self.annotated = checked
-
-
 class ImageFolder:
     def __init__(self, folder: str) -> None:
         self.folder = folder
@@ -46,7 +18,6 @@ class ImageFolder:
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
         self._check_image_files()
 
-        self._frames = []
         self._annotated_frames = []
         self._interesting_frames = []
         self._bad_frames = []
