@@ -10,6 +10,7 @@ import errors
 
 from buttons import NavBtn
 
+
 class Frame:
     def __init__(self, idx, filename):
         self.idx = idx
@@ -216,12 +217,16 @@ class ImageFolder:
 
         return cf_no, cf_fn
 
-    @property
-    def frames(self) -> int:
-        # Generator that yields every frame index in the current scope, in order
-        frames = self.get_scope()
-        for frame in frames:
-            yield frame
+    def frames(self):
+        # Generator that yields every frame in the current scope, in order
+        curr_frame = self._curr_frame_no
+        self.go_to_frame(NavBtn.START)
+        while self._curr_frame_no < self.num_frames:
+            yield curr_frame
+            self.go_to_frame(NavBtn.NEXT)
+        yield curr_frame
+        # This returns us to the frame we were at before frames generator was called
+        self.go_to_frame(curr_frame)
 
     @property
     def rois(self) -> list:
@@ -319,12 +324,7 @@ class ImageFolder:
             if self._frames[self._curr_frame_no].interesting:
                 # Rewrite the RoIs file without this frame
                 self.remove_roi()
-                # If this is the last interesting frame, go back one so we don't get out of range
-                if self._curr_frame_no is self._interesting_frames[-1]:
-                    self._intf_idx -= 1
-                self._interesting_frames.remove(self._curr_frame_no)
-                if not self._show_other:
-                    self.next_frame()
+                self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_annotated_only(self, checked: bool) -> None:
         if self.num_annotated > 0:
