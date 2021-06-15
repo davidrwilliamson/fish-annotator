@@ -8,6 +8,7 @@ from PyQt5.QtGui import QPixmap
 from typing import TextIO, Tuple
 import errors
 
+from buttons import NavBtn
 
 class Frame:
     def __init__(self, idx, filename):
@@ -83,17 +84,15 @@ class ImageFolder:
 
         # If we have any interesting frames
         if np.any(np.vectorize(lambda f: f.interesting)(self._frames)):
-            self._show_annotated = True
-            self._show_bad = False
             self._show_interesting = True
             self._show_other = False
             self._curr_frame_no = np.where(np.vectorize(lambda f: f.interesting)(self._frames))[0][0]
         else:
-            self._curr_frame_no = 0
-            self._show_annotated = False
-            self._show_bad = False
             self._show_interesting = False
             self._show_other = True
+            self._curr_frame_no = 0
+        self._show_bad = False
+        self._show_annotated_only = False
 
     def _check_image_files(self) -> None:
         if len(self._all_files) == 0:
@@ -218,16 +217,11 @@ class ImageFolder:
         return cf_no, cf_fn
 
     @property
-    def frames(self):
-        # Generator that yields every frame in the current scope, in order
-        curr_frame = self._curr_frame_no
-        self.go_to_first_frame()
-        while self._curr_frame_no < self.last_frame:
-            yield curr_frame
-            self.next_frame()
-        yield curr_frame
-        # This returns us to the frame we were at before frames generator was called
-        self.go_to_frame(curr_frame)
+    def frames(self) -> int:
+        # Generator that yields every frame index in the current scope, in order
+        frames = self.get_scope()
+        for frame in frames:
+            yield frame
 
     @property
     def rois(self) -> list:
@@ -249,68 +243,60 @@ class ImageFolder:
     def num_annotated(self) -> int:
         return np.count_nonzero(np.vectorize(lambda f: f.annotated)(self._frames))
 
-    @property
-    def last_frame(self) -> int:
-        # This returns the INDEX of the last frame under current show other/interesting rules, not the frame itself
-        if self._show_other and self._show_interesting:
-            return self._num_frames - 1
-        elif self._show_other and not self._show_interesting:
-            for i in range(self._num_frames - 1, 0, -1):
-                if i not in self._interesting_frames:
-                    return i
-        elif self._show_interesting and not self._show_other:
-            return self._interesting_frames[-1]
-
     def update_annotations(self, k, idx) -> None:
         if k and idx:
             self.annotations[k].append(idx)
             self.annotations[k] = np.unique(self.annotations[k]).tolist()
             self._frames[idx].annotated = True
 
-    @property
-    def match_bitmask(self):
-        return self._show_annotated + 2 * self._show_interesting + 4 * self._show_other + 8 * self._show_bad
-
-    def go_to_frame(self, frame: int) -> None:
-        if (frame >= 0) and (frame <= self.num_frames):
-            self._curr_frame_no = frame
+    def get_scope(self) -> np.ndarray:
+        if self._show_annotated_only:
+            in_scope = np.where(np.vectorize(lambda f: f.annotated)(self._frames))[0]
         else:
-            raise
+            in_scope = np.zeros((1, self._num_frames), dtype=bool)[0]
+            if self._show_other:
+                in_scope += np.vectorize(lambda f: f.other)(self._frames)
+            if self._show_interesting:
+                in_scope += np.vectorize(lambda f: f.interesting)(self._frames)
+            if self._show_bad:
+                in_scope += np.vectorize(lambda f: f.bad)(self._frames)
+            in_scope = np.where(in_scope)[0]
+        return in_scope
 
-    def go_to_first_frame(self) -> None:
-        self.go_to_frame(0)
+    def go_to_frame(self, move: int) -> None:
+        from_frame = self._curr_frame_no
 
-        curr_frame = self._frames[self._curr_frame_no]
-        if curr_frame.bitmask <= self.bitmask_show:
-            self.next_frame()
+        in_scope = self.get_scope()
 
-    def next_frame(self) -> None:
-        frames_in_scope = np.vectorize(lambda f: f.bitmask == self.match_bitmask)(self._frames)
-        self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
-
-        curr_frame = self._frames[self._curr_frame_no]
-        if curr_frame.bitmask <= self.bitmask_show:
-            self.next_frame()
-
-    def prev_frame(self) -> None:
-        self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
-
-        curr_frame = self._frames[self._curr_frame_no]
-        if curr_frame.bitmask != self.bitmask_show:
-            self.prev_frame()
-
-    def random_frame(self) -> None:
-        # Go to a random frame in the current context, useful for sampling for annotation
-        if self._show_other and self._show_interesting:
-            f = randrange(self._num_frames)
-        elif self._show_other and not self._show_interesting:
-            f = randrange(self._num_frames)
-            if f in self._interesting_frames or f in self._bad_frames:
-                self.random_frame()
-        elif self._show_interesting and not self._show_other:
-            f0 = randrange(len(self._interesting_frames))
-            f = self._interesting_frames[f0]
-        self.go_to_frame(f)
+        if len(in_scope) > 0:
+            if move is NavBtn.START:
+                self._curr_frame_no = in_scope[0]
+            elif move is NavBtn.END:
+                self._curr_frame_no = in_scope[-1]
+            elif move is NavBtn.NEXT:
+                # If the last frame is no longer in scope, find the next one that is
+                from_idx = []
+                while len(from_idx) < 1:
+                    from_idx = np.where(in_scope == from_frame)[0]
+                    from_frame = (from_frame + 1) % self.num_frames
+                self._curr_frame_no = in_scope[(from_idx + 1) % len(in_scope)][0]
+            elif move is NavBtn.PREV:
+                # If the last frame is no longer in scope, find the next one that is
+                from_idx = []
+                while len(from_idx) < 1:
+                    from_idx = np.where(in_scope == from_frame)[0]
+                    from_frame -= 1
+                    # loop around when we reach the start
+                    if from_frame < 0:
+                        from_frame = self.num_frames
+                self._curr_frame_no = in_scope[from_idx - 1][0]
+            elif move is NavBtn.RANDOM:
+                self._curr_frame_no = np.random.choice(in_scope)
+            elif move is NavBtn.NOCHANGE:
+                self.go_to_frame(NavBtn.NEXT)
+                self.go_to_frame(NavBtn.PREV)
+        else:  # If there are no frames in scope stay where we are
+            pass
 
     def toggle_bad_frame(self, checked: bool) -> None:
         if checked:
@@ -340,30 +326,22 @@ class ImageFolder:
                 if not self._show_other:
                     self.next_frame()
 
-    def toggle_show_annotated(self, checked: bool) -> None:
-        if self.annotations[5] > 0:
-            if checked:
-                self._show_bad = False
-                self._show_other = False
-                self._show_interesting = True
-            self._show_only_annotated = checked
-            self.next_frame()
-            self.prev_frame()
+    def toggle_show_annotated_only(self, checked: bool) -> None:
+        if self.num_annotated > 0:
+            self._show_annotated_only = checked
+            self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_bad(self, checked: bool) -> None:
         self._show_bad = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_interesting(self, checked: bool) -> None:
         self._show_interesting = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_other(self, checked: bool) -> None:
         self._show_other = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def calc_single_roi(self) -> None:
         """Calculate a binary mask and RoIs for a single file, to be used when marking images as 'interesting'.

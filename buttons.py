@@ -405,7 +405,7 @@ class LeftButtons(QWidget):
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
         self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
         self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}\n  '
-                                    'Total  {} '
+                                    'Total frames  {} '
                                     .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), a_f))
 
     def enable_buttons(self, show_annotated: bool, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
