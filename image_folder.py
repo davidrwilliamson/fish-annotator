@@ -2,7 +2,6 @@ import numpy as np
 import os
 import re
 import qimage2ndarray as q2n
-from random import randrange, choice
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
 from typing import TextIO, Tuple
@@ -290,10 +289,12 @@ class ImageFolder:
                 from_idx = []
                 while len(from_idx) < 1:
                     from_idx = np.where(in_scope == from_frame)[0]
-                    from_frame -= 1
-                    # loop around when we reach the start
-                    if from_frame < 0:
-                        from_frame = self.num_frames
+                    from_frame = (from_frame + 1) % self.num_frames
+                    # from_idx = np.where(in_scope == from_frame)[0]
+                    # from_frame -= 1
+                    # # loop around when we reach the start
+                    # if from_frame < 0:
+                    #     from_frame = self.num_frames
                 self._curr_frame_no = in_scope[from_idx - 1][0]
             elif move is NavBtn.RANDOM:
                 self._curr_frame_no = np.random.choice(in_scope)
