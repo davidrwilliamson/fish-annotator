@@ -86,8 +86,14 @@ class PaintingCanvas(MainCanvas):
         self.ellipse_ready = True  # False after we click the first point of the ellipse
         self.ellipse = [None, None, None, None]  # left, top, width, height
         self.ellipse_guides = None
+        self.ellipse_pixmap = QPixmap(self._w, self._h)
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
+        if self.last_x is None:  # First event.
+            self.last_x = e.x()
+            self.last_y = e.y()
+            return  # Ignore the first time.
+
         if self.ellipse_mode:
             self.last_x = e.x()
             self.last_y = e.y()
@@ -102,12 +108,8 @@ class PaintingCanvas(MainCanvas):
                 if np.all([i is not None for i in self.ellipse]):
                     self.draw_ellipse()
             self.draw_guides()
-        else:
-            if self.last_x is None:  # First event.
-                self.last_x = e.x()
-                self.last_y = e.y()
-                return  # Ignore the first time.
 
+        else:
             painter = QPainter(self.pixmap())
             # Would like to have semi-transparent annotation overlays without painting looking bad
             # p.setOpacity(0.5) after pen is set looks bad.
@@ -148,6 +150,12 @@ class PaintingCanvas(MainCanvas):
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if self.ellipse_mode:
             self.drawing_ellipse = not self.drawing_ellipse
+            # When we're done drawing the ellipse, write it to the main pixmap
+            if not self.drawing_ellipse:
+                painter = QPainter(self.pixmap())
+                painter.drawPixmap(0, 0, self.ellipse_pixmap)
+                painter.end()
+                self.update()
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         if self.drawing_ellipse:
@@ -191,7 +199,7 @@ class PaintingCanvas(MainCanvas):
         painter.drawEllipse(self.ellipse[0], self.ellipse[1], self.ellipse[2], self.ellipse[3])
         painter.end()
 
-        self.setPixmap(ellipse_pixmap)
+        self.ellipse_pixmap = ellipse_pixmap
         self.update()
 
         self.is_used = True
@@ -220,6 +228,10 @@ class PaintingCanvas(MainCanvas):
             painter.drawPixmap(0, 0, self.pixmap())
             if self.ellipse_mode:
                 painter.drawPixmap(0, 0, self.ellipse_guides)
+                if self.drawing_ellipse:
+                    # This displays the ellipse being drawn but doesn't save it between frames
+                    painter.drawPixmap(0, 0, self.ellipse_pixmap)
+
             painter.end()
 
 
