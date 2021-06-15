@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
         self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
         self.left_buttons.sgnl_toggle_interesting_frames.connect(self.show_interesting_frames)
         self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
+        self.left_buttons.sgnl_toggle_annotated_frames.connect(self.show_annotated_frames_only)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -148,11 +149,11 @@ class MainWindow(QMainWindow):
         self.lbl_frame.setText('Folder:  {}\nFile:      {}'.format(folder, cf_fn))
         # self.lbl_frame_no.setText('\nFrame: {} / {}'.format(cf_no, num_frames))
 
-        # TODO: Expose non-protected properties in ImageFolder for this, and/or find a nicer way to update these labels
-        i_f = len(self.im_folder._interesting_frames)
-        b_f = len(self.im_folder._bad_frames)
+        i_f = self.im_folder.num_interesting
+        b_f = self.im_folder.num_bad
+        a_f = self.im_folder.num_annotated
         ann = self.im_folder.annotations
-        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f, ann)
+        self.left_buttons.update_labels(num_frames, cf_no, i_f, b_f, ann, a_f)
 
     def save_annotations_mem(self) -> None:
         # The canvas saved to memory is always the full-sized annotation layer
@@ -285,7 +286,7 @@ class MainWindow(QMainWindow):
         self.right_buttons.uncheck_others(self.right_buttons.btns_im_layers, 0)
         self.bottom_buttons.enable_buttons()
         self.br_buttons.enable_buttons()
-        self.left_buttons.enable_buttons(self.im_folder._show_only_annotated, self.im_folder._show_bad,
+        self.left_buttons.enable_buttons(self.im_folder._show_annotated_only, self.im_folder._show_bad,
                                          self.im_folder._show_other, self.im_folder._show_interesting)
         self.main_menu.enable_export()
 
@@ -386,16 +387,7 @@ class MainWindow(QMainWindow):
     @pyqtSlot(IntEnum)
     def change_frame(self, value: IntEnum) -> None:
         self.save_annotations_mem()
-        if value is NavBtn.NEXT:
-            self.im_folder.next_frame()
-        elif value is NavBtn.PREV:
-            self.im_folder.prev_frame()
-        elif value is NavBtn.START:
-            self.im_folder.go_to_first_frame()
-        elif value is NavBtn.END:
-            self.im_folder.go_to_frame(self.im_folder.last_frame)
-        elif value is NavBtn.RANDOM:
-            self.im_folder.random_frame()
+        self.im_folder.go_to_frame(value)
 
         self.change_im_layer(self.curr_layer)
         if self.draw_rois:
@@ -408,11 +400,11 @@ class MainWindow(QMainWindow):
 
         # This is a gross hack that should be fixed/removed,
         # but I want to make sure that boxes are checked correctly when a frame is loaded
-        if self.im_folder.framepos[0] in self.im_folder._interesting_frames:
+        if self.im_folder._frames[self.im_folder.framepos[0]].interesting:
             self.br_buttons.cb_interest.setChecked(True)
         else:
             self.br_buttons.cb_interest.setChecked(False)
-        if self.im_folder.framepos[0] in self.im_folder._bad_frames:
+        if self.im_folder._frames[self.im_folder.framepos[0]].bad:
             self.br_buttons.cb_bad.setChecked(True)
         else:
             self.br_buttons.cb_bad.setChecked(False)
@@ -481,6 +473,22 @@ class MainWindow(QMainWindow):
     @pyqtSlot(bool)
     def show_other_frames(self, checked: bool) -> None:
         self.im_folder.toggle_show_other(checked)
+        self.change_frame(NavBtn.NOCHANGE)
+
+    @pyqtSlot(bool)
+    def show_annotated_frames_only(self, checked: bool) -> None:
+        self.im_folder.toggle_show_annotated_only(checked)
+        if checked:
+            self.left_buttons.cb_other.setChecked(False)
+            self.left_buttons.cb_bad.setChecked(False)
+            self.left_buttons.cb_interest.setChecked(False)
+            self.left_buttons.cb_other.setEnabled(False)
+            self.left_buttons.cb_bad.setEnabled(False)
+            self.left_buttons.cb_interest.setEnabled(False)
+        if not checked:
+            self.left_buttons.cb_other.setEnabled(True)
+            self.left_buttons.cb_bad.setEnabled(True)
+            self.left_buttons.cb_interest.setEnabled(True)
         self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(IntEnum)

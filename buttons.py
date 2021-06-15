@@ -350,6 +350,7 @@ class LeftButtons(QWidget):
     sgnl_toggle_bad_frames = pyqtSignal(bool)
     sgnl_toggle_interesting_frames = pyqtSignal(bool)
     sgnl_toggle_other_frames = pyqtSignal(bool)
+    sgnl_toggle_annotated_frames = pyqtSignal(bool)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(LeftButtons, self).__init__(parent)
@@ -369,6 +370,7 @@ class LeftButtons(QWidget):
         self.cb_bad.setTristate(False)
         self.cb_interest.setTristate(False)
         self.cb_other.setTristate(False)
+        self.cb_annotated.setEnabled(False)
         self.cb_bad.setEnabled(False)
         self.cb_interest.setEnabled(False)
         self.cb_other.setEnabled(False)
@@ -378,6 +380,7 @@ class LeftButtons(QWidget):
         lb_layout.addWidget(self.lbl_bad_frames)
         lb_layout.addWidget(self.lbl_annotations)
 
+        lb_layout.addWidget(self.cb_annotated)
         lb_layout.addWidget(self.cb_interest)
         lb_layout.addWidget(self.cb_other)
         lb_layout.addWidget(self.cb_bad)
@@ -394,14 +397,16 @@ class LeftButtons(QWidget):
             self.sgnl_toggle_interesting_frames.emit(checked)
         if option == FrameToggle.OTHER:
             self.sgnl_toggle_other_frames.emit(checked)
+        if option == FrameToggle.ANNOTATED:
+            self.sgnl_toggle_annotated_frames.emit(checked)
 
-    def update_labels(self, num_frames, cf_no, i_f, b_f, ann) -> None:
+    def update_labels(self, num_frames, cf_no, i_f, b_f, ann, a_f) -> None:
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
         self.lbl_interesting_frames.setText('Interesting frames: {}\n'.format(i_f))
         self.lbl_bad_frames.setText('Bad frames: {}\n'.format(b_f))
         self.lbl_bad_frames.setText('Annotations:\n  Myotome {}\n  Eyes  {}\n  Yolk  {}\n  Embyro  {}\n  Egg  {}\n  '
-                                    'Total  {} '
-                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), ann[5]))
+                                    'Total frames  {} '
+                                    .format(len(ann[0]), len(ann[1]), len(ann[2]), len(ann[3]), len(ann[4]), a_f))
 
     def enable_buttons(self, show_annotated: bool, show_bad: bool, show_other: bool, show_interesting: bool) -> None:
         self.cb_annotated.setEnabled(True)

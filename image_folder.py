@@ -2,11 +2,66 @@ import numpy as np
 import os
 import re
 import qimage2ndarray as q2n
-from random import randrange, choice
 from cv2 import cvtColor
 from PyQt5.QtGui import QPixmap
 from typing import TextIO, Tuple
 import errors
+
+from buttons import NavBtn
+
+
+class Frame:
+    def __init__(self, idx, filename):
+        self.idx = idx
+        self.filename = filename
+        self.annotated = False
+        self.bad = False
+        self.interesting = False
+        self.other = True
+        self.rois = []
+
+    def __str__(self):
+        return 'Frame {}'.format(self.idx)
+
+    def __repr__(self):
+        return 'Frame {}\n' \
+               '  filename: {}\n' \
+               '  annotated: {}\n' \
+               '  bad: {}\n' \
+               '  interesting: {}\n'\
+            .format(self.idx, self.filename, self.annotated, self.bad, self.interesting)
+
+    def set_bad(self, checked):
+        if checked:
+            self.bad = True
+            self.interesting = False
+            self.annotated = False
+            self.other = False
+        else:
+            self.bad = False
+            if not self.interesting and not self.annotated:
+                self.other = True
+
+    def set_interesting(self, checked):
+        if checked:
+            self.bad = False
+            self.interesting = True
+            self.other = False
+        else:
+            self.interesting = False
+            if not self.bad and not self.annotated:
+                self.other = True
+
+    def set_annotated(self, checked):
+        if checked:
+            self.set_interesting(True)
+        self.annotated = checked
+        if not self.bad and not self.interesting:
+            self.other = True
+
+    @property
+    def bitmask(self):
+        return self.annotated + 2 * self.interesting + 4 * self.other + 8 * self.bad
 
 
 class ImageFolder:
@@ -18,35 +73,26 @@ class ImageFolder:
         self._all_files = sorted([file for file in os.listdir(self.folder) if os.path.splitext(file)[1] in silc_extensions])
         self._check_image_files()
 
-        self._annotated_frames = []
-        self._interesting_frames = []
-        self._bad_frames = []
-        self._rois = [None] * len(self._all_files)
+        self._frames = [Frame(i, self._all_files[i]) for i in range(len(self._all_files))]
+        self._num_frames = len(self._frames)
 
-        self._num_frames = len(self._all_files)
+        self.frame_w, self.frame_h = self._get_frame_size()
 
         self._list_image_files()
         self._list_rois()
+        self.annotations = self._list_annotations()
 
-        self._intf_idx = 0
-        self._bad_idx = 0
-        self.frame_w, self.frame_h = self._get_frame_size()
-
-        self.annotations = self.count_annotations()
-
-        if self._interesting_frames:
-            self._intf_idx = 0
-            self._curr_frame_no = self._interesting_frames[self._intf_idx]
-            self._show_only_annotated = False
-            self._show_bad = False
+        # If we have any interesting frames
+        if np.any(np.vectorize(lambda f: f.interesting)(self._frames)):
             self._show_interesting = True
             self._show_other = False
+            self._curr_frame_no = np.where(np.vectorize(lambda f: f.interesting)(self._frames))[0][0]
         else:
-            self._curr_frame_no = 0
-            self._show_only_annotated = False
-            self._show_bad = False
             self._show_interesting = False
             self._show_other = True
+            self._curr_frame_no = 0
+        self._show_bad = False
+        self._show_annotated_only = False
 
     def _check_image_files(self) -> None:
         if len(self._all_files) == 0:
@@ -91,16 +137,14 @@ class ImageFolder:
                 f = re.match('^filename:', line)
                 if f:
                     fn = line.split(': ')[1].strip()
-                    self._interesting_frames.append(self._all_files.index(fn))
-        self._interesting_frames.sort()
+                    self._frames[self._all_files.index(fn)].set_interesting(True)
 
         if bad_frames_file:
             for line in bad_frames_file.readlines():
                 f = re.match('^filename:', line)
                 if f:
                     fn = line.split(': ')[1].strip()
-                    self._bad_frames.append(self._all_files.index(fn))
-        self._bad_frames.sort()
+                    self._frames[self._all_files.index(fn)].set_bad(True)
 
     def _list_rois(self) -> None:
         rois_file = self._load_rois_file()
@@ -114,12 +158,29 @@ class ImageFolder:
                         roi.append(line.split(': ')[1].strip())
                     elif f:
                         if roi:
-                            self._rois[self._all_files.index(fn)] = roi
+                            self._frames[self._all_files.index(fname)].rois = roi
                             roi = []
-                        fn = line.split(': ')[1].strip()
+                        fname = line.split(': ')[1].strip()
                     else:
                         print('Unexpected line in RoIs file.')
-            self._rois[self._all_files.index(fn)] = roi
+            # self._rois[self._all_files.index(fn)] = roi
+
+    def _list_annotations(self) -> list:
+        ann_folder = os.path.join(self.folder, 'analysis/annotations')
+        annotations = [file for file in os.listdir(ann_folder) if os.path.splitext(file)[1] == '.png']
+        ann_types = [[], [], [], [], []]
+        for file in annotations:
+            underscore_split = os.path.splitext(file)[0].split('_')
+            if len(underscore_split) == 4:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
+            elif len(underscore_split) == 3:
+                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
+            else:
+                raise
+            ann_types[j].append(i)
+            self._frames[i].annotated = True
+
+        return ann_types
 
     @property
     def curr_files(self) -> Tuple[str, str, str]:
@@ -159,132 +220,97 @@ class ImageFolder:
     def frames(self):
         # Generator that yields every frame in the current scope, in order
         curr_frame = self._curr_frame_no
-        self.go_to_first_frame()
-        while self._curr_frame_no < self.last_frame:
+        self.go_to_frame(NavBtn.START)
+        while self._curr_frame_no < self.num_frames:
             yield curr_frame
-            self.next_frame()
+            self.go_to_frame(NavBtn.NEXT)
         yield curr_frame
         # This returns us to the frame we were at before frames generator was called
         self.go_to_frame(curr_frame)
 
     @property
     def rois(self) -> list:
-        return self._rois[self._curr_frame_no]
+        return self._frames[self._curr_frame_no].rois
 
     @property
     def num_frames(self) -> int:
         return self._num_frames
 
     @property
-    def last_frame(self) -> int:
-        # This returns the INDEX of the last frame under current show other/interesting rules, not the frame itself
-        if self._show_other and self._show_interesting:
-            return self._num_frames - 1
-        elif self._show_other and not self._show_interesting:
-            for i in range(self._num_frames - 1, 0, -1):
-                if i not in self._interesting_frames:
-                    return i
-        elif self._show_interesting and not self._show_other:
-            return self._interesting_frames[-1]
+    def num_interesting(self) -> int:
+        return np.count_nonzero(np.vectorize(lambda f: f.interesting)(self._frames))
 
-    def count_annotations(self) -> list:
-        ann_folder = os.path.join(self.folder, 'analysis/annotations')
-        annotations = [file for file in os.listdir(ann_folder) if os.path.splitext(file)[1] == '.png']
-        ann_types = [[], [], [], [], []]
-        for file in annotations:
-            underscore_split = os.path.splitext(file)[0].split('_')
-            if len(underscore_split) == 4:
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')[2:]))
-            elif len(underscore_split) == 3:
-                i, j = list(map(int, os.path.splitext(file)[0].split('_')[1:]))
-            else:
-                raise
-            ann_types[j].append(i)
+    @property
+    def num_bad(self) -> int:
+        return np.count_nonzero(np.vectorize(lambda f: f.bad)(self._frames))
 
-        total_annotated = 0
-        for i in range(5):
-            total_annotated += len(ann_types[i])
-        ann_types.append(total_annotated)
-
-        return ann_types
+    @property
+    def num_annotated(self) -> int:
+        return np.count_nonzero(np.vectorize(lambda f: f.annotated)(self._frames))
 
     def update_annotations(self, k, idx) -> None:
         if k and idx:
             self.annotations[k].append(idx)
             self.annotations[k] = np.unique(self.annotations[k]).tolist()
-        total_annotated = 0
-        for i in range(5):
-            total_annotated += len(self.annotations[i])
-        self.annotations[5] = total_annotated
+            self._frames[idx].annotated = True
 
-    def go_to_frame(self, frame: int) -> None:
-        if (frame >= 0) and (frame <= self.num_frames):
-            self._curr_frame_no = frame
-            if self._curr_frame_no in self._interesting_frames:
-                self._intf_idx = self._interesting_frames.index(self._curr_frame_no)
-            if self._curr_frame_no in self._bad_frames:
-                self._bad_idx = self._bad_frames.index(self._curr_frame_no)
+    def get_scope(self) -> np.ndarray:
+        if self._show_annotated_only:
+            in_scope = np.where(np.vectorize(lambda f: f.annotated)(self._frames))[0]
         else:
-            raise
+            in_scope = np.zeros((1, self._num_frames), dtype=bool)[0]
+            if self._show_other:
+                in_scope += np.vectorize(lambda f: f.other)(self._frames)
+            if self._show_interesting:
+                in_scope += np.vectorize(lambda f: f.interesting)(self._frames)
+            if self._show_bad:
+                in_scope += np.vectorize(lambda f: f.bad)(self._frames)
+            in_scope = np.where(in_scope)[0]
+        return in_scope
 
-    def go_to_first_frame(self) -> None:
-        if self._show_other and self._show_interesting:
-            self.go_to_frame(0)
-        elif self._show_other and not self._show_interesting:
-            self.go_to_frame(0)
-            if self._curr_frame_no in self._interesting_frames:
-                self.next_frame()
-        elif self._show_interesting and not self._show_other:
-            self._intf_idx = 0
-            self.go_to_frame(self._interesting_frames[self._intf_idx])
+    def go_to_frame(self, move: int) -> None:
+        from_frame = self._curr_frame_no
 
-    def next_frame(self) -> None:
-        if self._show_other and self._show_interesting:
-            self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
-        elif self._show_other and not self._show_interesting:
-            self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
-            if self._curr_frame_no in self._interesting_frames:
-                self.next_frame()
-        elif self._show_interesting and not self._show_other:
-            if self._curr_frame_no >= self._interesting_frames[self._intf_idx]:
-                self._intf_idx = (self._intf_idx + 1) % len(self._interesting_frames)
-            self.go_to_frame(self._interesting_frames[self._intf_idx])
-        else:  # If neither show other or show interesting are checked, do nothing
+        in_scope = self.get_scope()
+
+        if len(in_scope) > 0:
+            if move is NavBtn.START:
+                self._curr_frame_no = in_scope[0]
+            elif move is NavBtn.END:
+                self._curr_frame_no = in_scope[-1]
+            elif move is NavBtn.NEXT:
+                # If the last frame is no longer in scope, find the next one that is
+                from_idx = []
+                while len(from_idx) < 1:
+                    from_idx = np.where(in_scope == from_frame)[0]
+                    from_frame = (from_frame + 1) % self.num_frames
+                self._curr_frame_no = in_scope[(from_idx + 1) % len(in_scope)][0]
+            elif move is NavBtn.PREV:
+                # If the last frame is no longer in scope, find the next one that is
+                from_idx = []
+                while len(from_idx) < 1:
+                    from_idx = np.where(in_scope == from_frame)[0]
+                    from_frame = (from_frame + 1) % self.num_frames
+                    # from_idx = np.where(in_scope == from_frame)[0]
+                    # from_frame -= 1
+                    # # loop around when we reach the start
+                    # if from_frame < 0:
+                    #     from_frame = self.num_frames
+                self._curr_frame_no = in_scope[from_idx - 1][0]
+            elif move is NavBtn.RANDOM:
+                self._curr_frame_no = np.random.choice(in_scope)
+            elif move is NavBtn.NOCHANGE:
+                self.go_to_frame(NavBtn.NEXT)
+                self.go_to_frame(NavBtn.PREV)
+        else:  # If there are no frames in scope stay where we are
             pass
-
-    def prev_frame(self) -> None:
-        if self._show_other and self._show_interesting:
-            self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
-        elif self._show_other and not self._show_interesting:
-            self.go_to_frame((self._curr_frame_no - 1) % self.num_frames)
-            if self._curr_frame_no in self._interesting_frames:
-                self.prev_frame()
-        elif self._show_interesting and not self._show_other:
-            if self._curr_frame_no <= self._interesting_frames[self._intf_idx]:
-                self._intf_idx = (self._intf_idx - 1) % len(self._interesting_frames)
-            self.go_to_frame(self._interesting_frames[self._intf_idx])
-        else:  # If neither show other or show interesting are checked, do nothing
-            pass
-
-    def random_frame(self) -> None:
-        # Go to a random frame in the current context, useful for sampling for annotation
-        if self._show_other and self._show_interesting:
-            f = randrange(self._num_frames)
-        elif self._show_other and not self._show_interesting:
-            f = randrange(self._num_frames)
-            if f in self._interesting_frames or f in self._bad_frames:
-                self.random_frame()
-        elif self._show_interesting and not self._show_other:
-            f0 = randrange(len(self._interesting_frames))
-            f = self._interesting_frames[f0]
-        self.go_to_frame(f)
 
     def toggle_bad_frame(self, checked: bool) -> None:
         if checked:
-            if self._curr_frame_no not in self._bad_frames:
+            if not self._frames[self._curr_frame_no].bad:
                 self._add_bad_frame()
         else:
-            if self._curr_frame_no in self._bad_frames:
+            if self._frames[self._curr_frame_no].bad:
                 self._remove_bad_frame()
 
     def toggle_interesting_frame(self, checked: bool) -> None:
@@ -292,46 +318,32 @@ class ImageFolder:
         # crashes the program. In cases where there are no interesting frames we need to fall back to showing other
         # Same for bad frames.
         if checked:
-            if self._curr_frame_no not in self._interesting_frames:
-                self._interesting_frames.append(self._curr_frame_no)
-                self._interesting_frames.sort()
+            if not self._frames[self._curr_frame_no].interesting:
+                self._frames[self._curr_frame_no].interesting = True
                 # Calculate RoIs (if any), add file to RoIs list file and write binary mask to disk
                 self.calc_single_roi()
         else:
-            if self._curr_frame_no in self._interesting_frames:
+            if self._frames[self._curr_frame_no].interesting:
                 # Rewrite the RoIs file without this frame
                 self.remove_roi()
-                # If this is the last interesting frame, go back one so we don't get out of range
-                if self._curr_frame_no is self._interesting_frames[-1]:
-                    self._intf_idx -= 1
-                self._interesting_frames.remove(self._curr_frame_no)
-                if not self._show_other:
-                    self.next_frame()
+                self.go_to_frame(NavBtn.NOCHANGE)
 
-    def toggle_show_annotated(self, checked: bool) -> None:
-        if self.annotations[5] > 0:
-            if checked:
-                self._show_bad = False
-                self._show_other = False
-                self._show_interesting = True
-            self._show_only_annotated = checked
-            self.next_frame()
-            self.prev_frame()
+    def toggle_show_annotated_only(self, checked: bool) -> None:
+        if self.num_annotated > 0:
+            self._show_annotated_only = checked
+            self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_bad(self, checked: bool) -> None:
         self._show_bad = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_interesting(self, checked: bool) -> None:
         self._show_interesting = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_other(self, checked: bool) -> None:
         self._show_other = checked
-        self.next_frame()
-        self.prev_frame()
+        self.go_to_frame(NavBtn.NOCHANGE)
 
     def calc_single_roi(self) -> None:
         """Calculate a binary mask and RoIs for a single file, to be used when marking images as 'interesting'.
@@ -418,11 +430,10 @@ class ImageFolder:
             with open(bad_frames_filename, 'wt') as f:
                 f.write('filename: {}\n'.format(fname))
 
-        self._bad_frames.append(self._curr_frame_no)
-        self._bad_frames.sort()
+        self._frames[self._curr_frame_no].bad = True
 
     def _remove_bad_frame(self) -> None:
-        self._bad_frames.remove(self._curr_frame_no)
+        self._frames[self._curr_frame_no].bad = False
 
         # TODO: Remove bad frame line from bad frames file
 
