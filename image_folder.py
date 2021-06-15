@@ -16,6 +16,7 @@ class Frame:
         self.annotated = False
         self.bad = False
         self.interesting = False
+        self.other = True
         self.rois = []
 
     def __str__(self):
@@ -34,24 +35,32 @@ class Frame:
             self.bad = True
             self.interesting = False
             self.annotated = False
+            self.other = False
         else:
             self.bad = False
+            if not self.interesting and not self.annotated:
+                self.other = True
 
     def set_interesting(self, checked):
         if checked:
             self.bad = False
             self.interesting = True
+            self.other = False
         else:
             self.interesting = False
+            if not self.bad and not self.annotated:
+                self.other = True
 
     def set_annotated(self, checked):
         if checked:
-            self.interesting = True
+            self.set_interesting(True)
         self.annotated = checked
+        if not self.bad and not self.interesting:
+            self.other = True
 
     @property
     def bitmask(self):
-        return self.annotated + 2 * self.bad + 4 * self.interesting
+        return self.annotated + 2 * self.interesting + 4 * self.other + 8 * self.bad
 
 
 class ImageFolder:
@@ -260,7 +269,7 @@ class ImageFolder:
 
     @property
     def match_bitmask(self):
-        return self._show_annotated + 2 * self._show_bad + 4 * self._show_interesting
+        return self._show_annotated + 2 * self._show_interesting + 4 * self._show_other + 8 * self._show_bad
 
     def go_to_frame(self, frame: int) -> None:
         if (frame >= 0) and (frame <= self.num_frames):
@@ -272,7 +281,7 @@ class ImageFolder:
         self.go_to_frame(0)
 
         curr_frame = self._frames[self._curr_frame_no]
-        if curr_frame.bitmask != self.bitmask_show:
+        if curr_frame.bitmask <= self.bitmask_show:
             self.next_frame()
 
     def next_frame(self) -> None:
@@ -280,7 +289,7 @@ class ImageFolder:
         self.go_to_frame((self._curr_frame_no + 1) % self.num_frames)
 
         curr_frame = self._frames[self._curr_frame_no]
-        if curr_frame.bitmask != self.bitmask_show:
+        if curr_frame.bitmask <= self.bitmask_show:
             self.next_frame()
 
     def prev_frame(self) -> None:

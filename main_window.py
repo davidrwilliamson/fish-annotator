@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
         self.left_buttons.sgnl_toggle_bad_frames.connect(self.show_bad_frames)
         self.left_buttons.sgnl_toggle_interesting_frames.connect(self.show_interesting_frames)
         self.left_buttons.sgnl_toggle_other_frames.connect(self.show_other_frames)
+        self.left_buttons.sgnl_toggle_annotated.connect(self.show_annotated_frames)
 
         self.setWindowTitle("Fish Annotator")
 
@@ -481,6 +482,11 @@ class MainWindow(QMainWindow):
     @pyqtSlot(bool)
     def show_other_frames(self, checked: bool) -> None:
         self.im_folder.toggle_show_other(checked)
+        self.change_frame(NavBtn.NOCHANGE)
+
+    @pyqtSlot(bool)
+    def show_annotated_frames(self, checked: bool) -> None:
+        self.im_folder.toggle_show_annotated(checked)
         self.change_frame(NavBtn.NOCHANGE)
 
     @pyqtSlot(IntEnum)

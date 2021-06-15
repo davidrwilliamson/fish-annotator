@@ -350,6 +350,7 @@ class LeftButtons(QWidget):
     sgnl_toggle_bad_frames = pyqtSignal(bool)
     sgnl_toggle_interesting_frames = pyqtSignal(bool)
     sgnl_toggle_other_frames = pyqtSignal(bool)
+    sgnl_toggle_annotated_frames = pyqtSignal(bool)
 
     def __init__(self, parent: QWidget = None) -> None:
         super(LeftButtons, self).__init__(parent)
@@ -369,6 +370,7 @@ class LeftButtons(QWidget):
         self.cb_bad.setTristate(False)
         self.cb_interest.setTristate(False)
         self.cb_other.setTristate(False)
+        self.cb_annotated.setEnabled(False)
         self.cb_bad.setEnabled(False)
         self.cb_interest.setEnabled(False)
         self.cb_other.setEnabled(False)
@@ -378,6 +380,7 @@ class LeftButtons(QWidget):
         lb_layout.addWidget(self.lbl_bad_frames)
         lb_layout.addWidget(self.lbl_annotations)
 
+        lb_layout.addWidget(self.cb_annotated)
         lb_layout.addWidget(self.cb_interest)
         lb_layout.addWidget(self.cb_other)
         lb_layout.addWidget(self.cb_bad)
@@ -394,6 +397,8 @@ class LeftButtons(QWidget):
             self.sgnl_toggle_interesting_frames.emit(checked)
         if option == FrameToggle.OTHER:
             self.sgnl_toggle_other_frames.emit(checked)
+        if option == FrameToggle.ANNOTATED:
+            self.sgnl_toggle_annotated_frames.emit(checked)
 
     def update_labels(self, num_frames, cf_no, i_f, b_f, ann, a_f) -> None:
         self.lbl_frames.setText('Frame: {} / {}\n'.format(cf_no, num_frames))
