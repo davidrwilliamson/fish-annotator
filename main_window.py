@@ -304,6 +304,11 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(IntEnum)
     def change_tool(self, idx: IntEnum) -> None:
+        if self.right_buttons.btn_ellipse.isChecked():
+            last_tool_ellipse = True
+        else:
+            last_tool_ellipse = False
+
         ann_layer: PaintingCanvas = self.annotation_canvases[self.curr_ann_layer]
         if idx == ToolBtn.PAINT:
             ann_layer.brush_erase = False
@@ -327,10 +332,17 @@ class MainWindow(QMainWindow):
             # My "fix" ended up introducing a new bug where annotations are not saved, because we call the clear tool in a few other places.
             # I guess we need a way to know that a previously not empty annotation has been made empty.
             ann_layer.update()
-            self.change_tool(ToolBtn.PAINT)
+            if last_tool_ellipse:
+                self.change_tool(ToolBtn.ELLIPSE)
+            else:
+                self.change_tool(ToolBtn.PAINT)
         if idx == ToolBtn.REVERT:
             self.load_annotations_mem()
             ann_layer.update()
+            if last_tool_ellipse:
+                self.change_tool(ToolBtn.ELLIPSE)
+            else:
+                self.change_tool(ToolBtn.PAINT)
         if idx == ToolBtn.ELLIPSE:
             ann_layer.brush_erase = False
             self.right_buttons.btn_paint.setChecked(False)
@@ -363,6 +375,7 @@ class MainWindow(QMainWindow):
                 self.right_buttons.enable_buttons(selection=range(10, 16))
             else:
                 self.curr_ann_layer = -1
+                self.toggle_nn_preview(False)
 
     @pyqtSlot(bool)
     def toggle_rois(self, checked: bool) -> None:

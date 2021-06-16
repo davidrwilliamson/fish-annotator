@@ -150,12 +150,19 @@ class PaintingCanvas(MainCanvas):
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if self.ellipse_mode:
             self.drawing_ellipse = not self.drawing_ellipse
-            # When we're done drawing the ellipse, write it to the main pixmap
-            if not self.drawing_ellipse:
-                painter = QPainter(self.pixmap())
-                painter.drawPixmap(0, 0, self.ellipse_pixmap)
-                painter.end()
-                self.update()
+            # Right click cancels ellipse drawing
+            if self.drawing_ellipse and e.button() == Qt.RightButton:
+                self.ellipse_ready = True
+                self.last_x = None
+                self.last_y = None
+            if e.button() == Qt.LeftButton:
+                # When we're done drawing the ellipse, write it to the main pixmap and reset coordinates
+                if not self.drawing_ellipse:
+                    painter = QPainter(self.pixmap())
+                    painter.drawPixmap(0, 0, self.ellipse_pixmap)
+                    painter.end()
+                    self.update()
+                    # self.ellipse = [None, None, None, None]
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         if self.drawing_ellipse:
