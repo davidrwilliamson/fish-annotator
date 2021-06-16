@@ -393,7 +393,8 @@ class MainWindow(QMainWindow):
             self.nn_preview_canvas.draw_preview(self.annotation_canvases[self.curr_ann_layer])
             self.nn_preview_canvas.setVisible(True)
         else:
-            self.annotation_canvases[self.curr_ann_layer].setVisible(True)
+            if self.curr_ann_layer >= 0:
+                self.annotation_canvases[self.curr_ann_layer].setVisible(True)
             self.nn_preview_canvas.setVisible(False)
             self.right_buttons.btn_nn_preview.setChecked(False)
 
