@@ -326,6 +326,7 @@ class ImageFolder:
             if self._frames[self._curr_frame_no].interesting:
                 # Rewrite the RoIs file without this frame
                 self.remove_roi()
+                self._frames[self._curr_frame_no].interesting = False
                 self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_annotated_only(self, checked: bool) -> None:
