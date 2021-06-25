@@ -332,7 +332,6 @@ class ImageFolder:
     def toggle_show_annotated_only(self, checked: bool) -> None:
         if self.num_annotated > 0:
             self._show_annotated_only = checked
-            self.go_to_frame(NavBtn.NOCHANGE)
 
     def toggle_show_bad(self, checked: bool) -> None:
         self._show_bad = checked
