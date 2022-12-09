@@ -102,11 +102,14 @@ class MainMenu(QMenuBar):
         self.analysis_menu.addAction(action_analyse_background_subtract)
 
     def _call_open(self) -> None:
-        dlg = QFileDialog()
+        dlg = QFileDialog(options=QFileDialog.DontUseNativeDialog)
         dlg.setFileMode(QFileDialog.Directory)
-        # folder = dlg.getExistingDirectory(self, 'Choose folder :)', '/media', QFileDialog.ShowDirsOnly)
+
         if dlg.exec_():
             folder = dlg.selectedFiles()[0]
+            if not os.path.isdir(folder):
+                print ('{} is not a folder.'.format(folder))
+                return
             try:
                 self.image_folder = ImageFolder(folder)
             except errors.NoImageFilesError as e:
@@ -144,9 +147,12 @@ class MainMenu(QMenuBar):
         im_raw = im_folder.curr_frames[0]
         rois = im_folder.rois
 
-        roi = rois[0]
-        roi = list(map(int, roi.split(',')))
-        roi = QRect(roi[0], roi[1], roi[2] - roi[0], roi[3] - roi[1])
+        if len(rois) > 0:
+            roi = rois[0]
+            roi = list(map(int, roi.split(',')))
+            roi = QRect(roi[0], roi[1], roi[2] - roi[0], roi[3] - roi[1])
+        else:
+            roi = None
         return im_raw, roi
 
     # def preview_rois(self, im_folder: ImageFolder) -> PreviewPopup:

@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import os
 
+
 # This and the other utils files are extremely dirty.
 # They can be expected to break and/or cause irreparable data loss without warning.
 # Use with caution or, better yet, not at all.
@@ -107,7 +108,11 @@ def labels_cod(path: str, feature: int, points):
             r_s = format_region_string(path, region_count, region_id, points[region_id], feature_string)
             regions_strings.append(r_s)
     else:
-        regions_strings = [format_region_string(path, 1, 0, points[0], feature_string)]
+        if len(points) == 0:
+            # Empty annotation file for some reason
+            print(path)
+        else:
+            regions_strings = [format_region_string(path, 1, 0, points[0], feature_string)]
 
     return regions_strings
 
@@ -124,7 +129,8 @@ def format_region_string(path: str, region_count: int, region_id: int, polygon: 
 
 def format_file_info_string(path: str) -> str:
     filename = os.path.split(path)[1]
-    filename = '{}_full.png'.format(filename.split('_')[0])  # Hack because filenames of image don't match annotation filename
+    filename = '{}_full.png'.format(
+        filename.split('_')[0])  # Hack because filenames of image don't match annotation filename
     file_size = os.stat(path).st_size
     str_out = '{},{},{{}}'.format(filename, file_size)
 
@@ -145,33 +151,63 @@ def format_polygon_string(polygon: np.ndarray) -> str:
 
 def main():
     labels = []
-    folders = ['annotations_x2']  # ['20200405/1', '20200406/1', '20200407/1', '20200408/1', '20200409/1', '20200410/1']
+    root = '/media/dave/dave_8tb/2021/'
+    # dates = ['202104{:02d}'.format(i) for i in range(8, 26)]
+    egg_folders = ['20210408/2', '20210408/3', '20210409/1', '20210410/1', '20210410/2', '20210410/3', '20210411/1',
+                   '20210411/2', '20210412/1', '20210413/1', '20210414/1', '20210415/1', '20210415/2', '20210416/1',
+                   '20210416/2', '20210416/3', '20210417/1', '20210417/2', '20210417/3', '20210418/1', '20210419/1',
+                   '20210420/1']
+    larva_folders = ['20210418/2', '20210421/1', '20210420/1', '20210422/1', '20210422/2', '20210422/sw1_1',
+                     '20210422/sw1_2', '20210422/sw3_1', '20210422/sw3_2', '20210422/sw3_3', '20210422/ulsfo-28-1_1',
+                     '20210422/ulsfo-28-1_2', '20210422/ulsfo-28-1_3', '20210423/1', '20210423/2', '20210423/3',
+                     '20210423/statfjord-14d-4_2', '20210423/statfjord-14d-4', '20210423/statfjord-21d-2_2',
+                     '20210423/statfjord-21d-2', '20210423/statfjord-40d-4_2', '20210423/statfjord-40d-4',
+                     '20210423/statfjord-4d-1_2', '20210423/statfjord-4d-1', '20210423/statfjord-4d-3_2',
+                     '20210423/statfjord-4d-3', '20210423/statfjord-60d-2_2', '20210423/statfjord-60d-2',
+                     '20210423/sw-4d-3', '20210423/sw-60d-2_2', '20210423/sw-60d-2', '20210423/sw-60d-3',
+                     '20210423/sw-60d-4_2', '20210423/sw-60d-4', '20210423/ulsfo-28d-1_2', '20210423/ulsfo-28d-1',
+                     '20210423/ulsfo-28d-2', '20210423/ulsfo-28d-4_2', '20210423/ulsfo-28d-4', '20210423/ulsfo-60d-1_2',
+                     '20210423/ulsfo-60d-1', '20210423/ulsfo-60d-2_2', '20210423/ulsfo-60d-2', '20210424/1',
+                     '20210424/2', '20210425/1', '20210425/2', '20210425/statfjord-28d-3', '20210425/statfjord-60d-3',
+                     '20210425/sw-4d-1', '20210425/sw-60d-1', '20210425/sw3', '20210425/sw4', '20210425/ulsfo-4d-3']
 
-    for ff in folders:
-        folder = os.path.join('/home/dave/Desktop/more_annotations/still_more', ff)
-        # folder = os.path.join('/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/cropped/', ff)
-        # folder = os.path.join('/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200413/DCA-2,50/analysis/annotations')
-        files = sorted([file for file in os.listdir(folder) if os.path.splitext(file)[1] == '.png'])
+    # 2020
+    root = '/media/dave/dave_8tb/Easter_2020/Bernard/'
+    egg_folders = ['20200404/3', '20200405/1', '20200406/1', '20200407/1',
+                   '20200408/1', '20200408/DCA-ctrl', '20200408/DCA-0,15', '20200408/DCA-0,31', '20200408/DCA-0,62', '20200408/DCA-1,25', '20200408/DCA-2,50', '20200408/DCA-5,00',
+                   '20200409/1', '20200409/DCA-ctrl', '20200409/DCA-0,31', '20200409/DCA-1,25', '20200409/DCA-5,00',
+                   '20200410/1', '20200410/DCA-ctrl', '20200410/DCA-0,31', '20200410/DCA-1,25', '20200410/DCA-5,00',
+                   '20200411/DCA-ctrl',
+                   '20200412/DCA-ctrl-2']
 
-        for f in files:
-            feature = os.path.splitext(f.split('_')[-1])[0]
-            path = os.path.join(folder, f)
-            im = load_image(path)
-            im_filled = im_fill(im)
-            points = outline_points(im_filled)
-            label = labels_cod(path, feature, points)
-            labels.append(label)
+    # for ff in larva_folders:
+    for ff in egg_folders:
+        folder = os.path.join(root, ff, 'analysis/annotations')
+        if os.path.exists(folder):
+            # folder = os.path.join('/home/dave/Desktop/more_annotations/still_more', ff)
+            # folder = os.path.join('/home/dave/PycharmProjects/fish-annotator/data/cod_eggs/cropped/', ff)
+            # folder = os.path.join('/media/davidw/SINTEF Polar Night D/Easter cod experiments/Bernard/20200413/DCA-2,50/analysis/annotations')
+            files = sorted([file for file in os.listdir(folder) if os.path.splitext(file)[1] == '.png'])
 
-            # # Show processing steps outputs
-            # cv.imshow('Raw outline', im)
-            # cv.imshow('Filled area of interest', im_filled)
-            # points_im = np.zeros(im.shape, np.uint8)
-            # for p in points:
-            #     cv.drawContours(points_im, p, -1, 255, 3)
-            # cv.imshow("Points on boundary", points_im)
-            # cv.waitKey()
+            for f in files:
+                feature = os.path.splitext(f.split('_')[-1])[0]
+                path = os.path.join(folder, f)
+                im = load_image(path)
+                im_filled = im_fill(im)
+                points = outline_points(im_filled)
+                label = labels_cod(path, feature, points)
+                labels.append(label)
 
+                # # Show processing steps outputs
+                # cv.imshow('Raw outline', im)
+                # cv.imshow('Filled area of interest', im_filled)
+                # points_im = np.zeros(im.shape, np.uint8)
+                # for p in points:
+                #     cv.drawContours(points_im, p, -1, 255, 3)
+                # cv.imshow("Points on boundary", points_im)
+                # cv.waitKey()
     out_text = output_nn_labels(labels)
     _ = None
+
 
 main()

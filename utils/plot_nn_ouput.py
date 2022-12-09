@@ -36,10 +36,12 @@ def prepare_dataframe(df):
     df['Body volume[mm3]'] = df['Total body volume[mm3]'] - df['Yolk volume[mm3]']
 
     df = remove_bad_volumes(df)
+    # Recalculate yolk volumes. Need to go through and do manual checks again
     # Ellipsoid: 4/3 pi a^2 c
     a = df['Yolk height[mm]'] * 0.5
     c = df['Yolk length[mm]'] * 0.5
     df['Yolk volume[mm3]'] = np.pi * (4./3.) * a * a * c
+    # Also means we recalculate the "structural" volume
     df['Body volume[mm3]'] = df['Total body volume[mm3]'] - df['Yolk volume[mm3]']
 
     df = remove_bad_eyes(df)
@@ -152,6 +154,13 @@ def journal_plot(df, attribute, treatment, y_lims):
     colour = pal[1]
 
     data = df[df['Treatment'] == treatment]
+    treatment_names = {'DCA-ctrl': 'Control',
+                       'DCA-0,15': '8 μg/L',
+                       'DCA-0,31': '27 μg/L',
+                       'DCA-0,62': '108 μg/L',
+                       'DCA-1,25': '220 μg/L',
+                       'DCA-2,50': '343 μg/L',
+                       'DCA-5,00': '747 μg/L'}
     dates = data[x].unique()
     date_ordinal = data['Date'].copy()
     date_strings = ['20200413', '20200414', '20200415', '20200416', '20200417']
@@ -179,7 +188,6 @@ def journal_plot(df, attribute, treatment, y_lims):
         plt.plot([i - 0.125, i + 0.125], [y_hi, y_hi], linewidth=linewidth * 1.5, color='black')
 
     ax.set(ylim=y_lims)
-    ax.set_title('{} - {}'.format(attribute.split('[')[0], treatment), fontsize=title_fontsize)
 
     # Tick appearance
     # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
@@ -191,14 +199,39 @@ def journal_plot(df, attribute, treatment, y_lims):
     ax.tick_params(axis='both', which='major', length=8, labelsize=label_fontsize)
     ax.tick_params(axis='both', which='both', width=linewidth)
 
-    ax.set_xlabel('')
+    ax.set_xlabel('Days post hatch', fontsize=label_fontsize)
     ylabel = ax.get_ylabel()
     ax.set_ylabel(ylabel, fontsize=label_fontsize)
 
+    if attribute == 'Body volume[mm3]':
+        # ax.set_title('Structural volume - {}'.format(treatment_names[treatment]), fontsize=title_fontsize)
+        ax.set_title('Structural volume', fontsize=title_fontsize)
+        ax.set_ylabel('Structural volume[mm3]', fontsize=label_fontsize)
+    elif attribute == 'Myotome length[mm]':
+        ax.set_title('Standard length', fontsize=title_fontsize)
+        ax.set_ylabel('Standard length[mm]', fontsize=label_fontsize)
+    elif attribute == 'Eye min diameter[mm]':
+        ax.set_title('Eye diameter', fontsize=title_fontsize)
+        ax.set_ylabel('Eye diameter[mm]', fontsize=label_fontsize)
+    else:
+        # ax.set_title('{} - {}'.format(attribute.split('[')[0], treatment_names[treatment]), fontsize=title_fontsize)
+        ax.set_title('{}'.format(attribute.split('[')[0]), fontsize=title_fontsize)
+
     xticklabels = ax.get_xticklabels()
-    ax.set_xticklabels(xticklabels, rotation=45, ha='right', rotation_mode='anchor')
+    new_labels = {'20200413': '1',
+                  '20200414': '2',
+                  '20200415': '3',
+                  '20200416': '4',
+                  '20200417': '5',}
+    new_labels = ['1', '2', '3', '4', '5']
+    # for n, i in enumerate(xticklabels):
+    #     xticklabels[n] = new_labels[i]
+    ax.set_xticklabels(new_labels)
+    # ax.set_xticklabels(xticklabels, rotation=45, ha='right', rotation_mode='anchor')
     for axis in ['top', 'bottom', 'left', 'right']:
         ax.spines[axis].set_linewidth(linewidth)
+
+    plt.tight_layout()
     # plt.show()
     plt.savefig('/home/dave/Desktop/tox_plots/{}_{}.png'.format(attribute, treatment))
 
@@ -265,6 +298,8 @@ def journal_plot_daily(df, attribute, date, y_lims):
     ax.set_xticklabels(xticklabels, rotation=45, ha='right', rotation_mode='anchor')
     for axis in ['top', 'bottom', 'left', 'right']:
         ax.spines[axis].set_linewidth(linewidth)
+
+    plt.tight_layout()
     #plt.show()
     plt.savefig('/home/dave/Desktop/tox_plots/{}_{}.png'.format(attribute, date))
 
@@ -314,12 +349,12 @@ def daily_regression_plot_only(df, attribute, date, y_lim):
 
 
 def main():
-    bhh = pd.read_csv('/home/dave/cod_results/BHH/bhh_larvae.csv')
+    # bhh = pd.read_csv('/home/dave/cod_results/BHH/bhh_larvae.csv')
 
     treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50',
                   'DCA-5,00']
 
-    root_folder_larvae = '/home/dave/cod_results/2106/'
+    root_folder_larvae = '/mnt/Media/cod_results/2106/'
     # root_folder_larvae = '/home/dave/cod_results/uncropped/1246/'
     dates_larvae = ['20200413', '20200414', '20200415', '20200416', '20200417']
 
@@ -330,15 +365,18 @@ def main():
     # daily_regression_plot_only(df, 'Yolk volume[mm3]', '20200413')
     y_lims = [(0.0, 0.7), (0.0, 0.3), (0.0, 0.6)]
     y_lims = [(0.0, 0.5), (0.0, 0.15), (0.0, 0.4)] # For daily regression plots
-    y_lims = [(0.0, 6.0)]
-    plot_attributes = ['Myotome length[mm]']#['Total body volume[mm3]', 'Yolk volume[mm3]', 'Body volume[mm3]']
-    plot_treatments = ['DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
+    y_lims = [(0.0, 6.0), (0.0, 0.7), (0.0, 0.3), (0.0, 0.6), (0, 0)] # For myotome length, total body volume, yolk volume, body volume
+    y_lims = [(0.0, 5.5), (0.0, 0.45), (0.0, 0.65), (0.0, 0.25), (0.0, 0.65), (0.0, 0.06)]  # DCA-ctrl only, for myotome length, min eye diameter, total body volume, yolk volume, body volume, eye volume
+    y_lims = [(0.0, 5.5), (0.0, 0.45), (0.0, 0.65)]  # DCA-ctrl only, for myotome length, min eye diameter, total body volume, yolk volume, body volume, eye volume
+    # plot_attributes = ['Myotome length[mm]', 'Total body volume[mm3]', 'Yolk volume[mm3]', 'Body volume[mm3]', 'Eye volume[mm3]']
+    plot_attributes = ['Myotome length[mm]', 'Eye min diameter[mm]', 'Body volume[mm3]']
+    plot_treatments = ['DCA-ctrl'] # ', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
     for i, attribute in enumerate(plot_attributes):
-        for date in dates_larvae:
+#        for date in dates_larvae:
             # daily_regression_plot_only(df, attribute, date, y_lims[i])
-            journal_plot_daily(df, attribute, date, y_lims[i])
-        # for treatment in plot_treatments:
-        #     journal_plot(df, attribute, treatment, y_lims[i])
+#            journal_plot_daily(df, attribute, date, y_lims[i])
+        for treatment in plot_treatments:
+            journal_plot(df, attribute, treatment, y_lims[i])
 
     # df.to_csv('/home/dave/Desktop/larvae_stats_(no_eyes).csv')
 

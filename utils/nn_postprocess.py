@@ -5,6 +5,7 @@ import cv2 as cv
 from progressbar import ProgressBar, Percentage, Bar, Timer, AdaptiveETA
 from fil_finder import FilFinder2D
 import astropy.units as u
+from PIL import Image
 from skimage import morphology as sk_morph
 from skimage import measure as sk_measure
 from skimage import transform as sk_transform
@@ -18,9 +19,22 @@ TODO:
     Label fish with corresponding body parts
 """
 
+
 def load_image(image_folder: str, f: str) -> np.ndarray:
-    im = np.load(os.path.join(image_folder, f + '.silc')).astype(np.uint8).squeeze()
-    im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
+    if os.path.splitext(f)[-1] in ['.silc']:
+        im = np.load(os.path.join(image_folder, f + '.silc')).astype(np.uint8).squeeze()
+        im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
+    elif os.path.splitext(f)[-1] in ['.silc_bayer']:
+        im = np.load(os.path.join(image_folder, f + '.silc_bayer')).astype(np.uint8).squeeze()
+        im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
+    elif os.path.splitext(f)[-1] == '.png':
+        im = Image.open(os.path.join(image_folder, f + '.png'))
+        im = np.asarray(im)
+        im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+    else:
+        # print ('No valid extension found, trying .silc_bayer')
+        im = np.load(os.path.join(image_folder, f + '.silc')).astype(np.uint8).squeeze()
+        im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
 
     return im
 
@@ -48,7 +62,7 @@ def draw_masks(im: np.ndarray, masks: np.ndarray, body_idx: np.ndarray, eye_idx:
         mask = body_masks[:, :, i].squeeze()
         body_outline = cv.dilate(mask, np.ones([5, 5])) - mask
 
-        im[body_outline != 0] = (0, 0, 255)
+        im[body_outline != 0] = (255, 0, 255)
 
     eye_masks = masks[:, :, eye_idx].astype(np.uint8)
     n = eye_masks.shape[2]
@@ -69,6 +83,16 @@ def draw_masks(im: np.ndarray, masks: np.ndarray, body_idx: np.ndarray, eye_idx:
     return im
 
 
+def draw_skeletons(im: np.ndarray, body_measurements: list):
+    for fish in body_measurements:
+        if fish:
+            skeleton = fish['Body skeleton']
+            skeleton = cv.dilate(skeleton, np.ones([2, 2]))
+            im[skeleton != 0] = (0, 0, 255)
+
+    return im
+
+
 def draw_labels(im: np.ndarray, eye_measurements: list, body_measurements: list, yolk_measurements: list,
                 fish_parts: np.ndarray) -> np.ndarray:
     font = cv.FONT_HERSHEY_PLAIN
@@ -84,7 +108,7 @@ def draw_labels(im: np.ndarray, eye_measurements: list, body_measurements: list,
                 min_diameter, max_diameter, area, pos_x, pos_y = \
                     eye['Eye min diameter[mm]'], eye['Eye max diameter[mm]'], eye['Eye area[mm2]'], \
                     eye['Eye pos[px]'][0] + padding_w, eye['Eye pos[px]'][1] + padding_h
-                im = cv.putText(im, '{:0.3f}mm'.format(min_diameter), (pos_x, pos_y),
+                im = cv.putText(im, 'Eye: {:0.3f}mm'.format(min_diameter), (pos_x, pos_y),
                                 font, font_size, (255, 0, 0), line_weight, cv.LINE_AA)
 
     for fish in body_measurements:
@@ -96,18 +120,18 @@ def draw_labels(im: np.ndarray, eye_measurements: list, body_measurements: list,
             im = cv.putText(im, '{}'.format(direction),
                             (pos_x, pos_y), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
             dy = int(cv.getTextSize('{}'.format(direction), font, font_size, line_weight)[1] * 2.5)
-            im = cv.putText(im, 'Area: {:0.3f}mm2'.format(area),
-                            (pos_x, pos_y + dy), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
+            im = cv.putText(im, 'Body area: {:0.3f}mm2'.format(area),
+                            (pos_x, pos_y + dy), font, font_size, (255, 0, 255), line_weight, cv.LINE_AA)
             im = cv.putText(im, 'Length: {:0.3f}mm'.format(length),
-                            (pos_x - 50, pos_y - 70), font, font_size, (63, 192, 192), line_weight, cv.LINE_AA)
+                            (pos_x - 50, pos_y - 70), font, font_size, (0, 0, 255), line_weight, cv.LINE_AA)
 
-            im[skeleton != 0] = (0, 255, 255)
+            im[skeleton != 0] = (0, 0, 255)
 
     for fish in yolk_measurements:
         if fish:
             area, pos_x, pos_y = fish['Yolk area[mm2]'], \
                                  fish['Yolk pos[px]'][0] + padding_w, fish['Yolk pos[px]'][1] + padding_h
-            im = cv.putText(im, '{:0.3f}mm2'.format(area),
+            im = cv.putText(im, 'Yolk area: {:0.3f}mm2'.format(area),
                             (pos_x, pos_y), font, font_size, (0, 127, 0), line_weight, cv.LINE_AA)
 
     return im
@@ -483,7 +507,7 @@ def build_fish_associations(masks: np.ndarray, body_idx: np.ndarray, eye_idx: np
     # Portion of the part that has to be inside the body to be counted
     eye_threshold = yolk_threshold = 0.8
 
-    fish = np.empty((n), dtype=np.object)
+    fish = np.empty((n), dtype=object)
     for i in range(n):
         if body_idx[i]:
             fish[i] = []
@@ -659,7 +683,7 @@ def remove_overlapping_masks(masks: np.ndarray, idx: np.ndarray) -> np.ndarray:
 
 # %%
 def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarray]:
-    body_idx = eye_idx = yolk_idx = np.array([False] * class_ids.size, dtype=np.bool)
+    body_idx = eye_idx = yolk_idx = np.array([False] * class_ids.size, dtype=bool)
     if 2 in class_ids:
         body_idx = (class_ids == 2)
     if 3 in class_ids:
@@ -671,15 +695,18 @@ def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarr
 
 
 # %% Main
-def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv: bool) -> None:
+def analyse_folder(folder: str, image_folder: str, image_out_folder: str, show_images: bool, write_csv: bool, write_images: bool) -> None:
     scale = 287.0
     date, treatment = folder.split('/')[-2:]
     log_path = os.path.join(folder, '{}_{}_measurements_log.csv'.format(date, treatment))
+
+    # files_of_interest = ['D20200415T160734.175833']
 
     files = [f for f in os.listdir(folder) if
              (os.path.isfile(os.path.join(folder, f))
              and (os.stat(os.path.join(folder, f)).st_size > 408)
              and (os.path.splitext(f)[1] != '.csv'))]
+             # and f in files_of_interest)]
     files.sort()
 
     if write_csv:
@@ -698,6 +725,13 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
         masks = nn_output['masks']
 
         body_idx, eye_idx, yolk_idx = get_idx_by_class(class_ids)
+        # Discard empty masks
+        for i in range(masks.shape[2]):
+            if not np.any(masks[:, :, i]):
+                body_idx[i] = False
+                eye_idx[i] = False
+                yolk_idx[i] = False
+                print ("Empty mask for idx={} in {}".format(i, f))
 
         if np.any(body_idx) and np.any(eye_idx):
             masks = correct_body_masks(masks, body_idx)
@@ -724,34 +758,258 @@ def analyse_folder(folder: str, image_folder: str, show_images: bool, write_csv:
                     cv.imshow('Neural Network output', im)
                     cv.waitKey(0)
 
+                if write_images:
+                    im = draw_masks(im, masks, body_idx, eye_idx, yolk_idx)
+                    im = draw_skeletons(im, body_measurements)
+                    # im = automated_biometry_body(scale, im, masks[:, :, body_idx], masks[:, :, yolk_idx])
+                    im = draw_labels(im, eye_measurements, body_measurements, yolk_measurements, fish)
+                    im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+
+                    im = Image.fromarray(im)
+                    if not os.path.isdir(image_out_folder):
+                        os.makedirs(image_out_folder)
+                    im.save(os.path.join(image_out_folder, f) + '.png')
+
                 if write_csv:
                     write_frame_to_csv(log_path, folder, f, fish, body_measurements, eye_measurements, yolk_measurements,
                                    body_idx, eye_idx, yolk_idx)
 
 
+## Code from biometry_cod to replicate skeleton from Bjarne's original code
+def automated_biometry_body(scale, im, body_masks, yolk_mask):
+    h, w, n = body_masks.shape
+
+    for i in range(n):
+        body_mask = body_masks[:, :, i].astype(np.uint8)
+    # If yolk is found, "or" yolk mask over body mask as yolk is always a part of the body
+    # body_mask = np.bitwise_or(body_mask, yolk_mask)
+
+        # Draw body outline on raw image
+        body_outline = cv.dilate(body_mask, np.ones([5, 5])) - body_mask
+        # im[body_outline != 0] = (255, 0, 255)
+
+        # Find direction of larvae
+        body_sum = np.sum(body_mask.astype(np.float), axis=0)
+        body_diff = np.abs(np.diff(body_sum))
+
+        body_start = 0
+        for i, size in enumerate(body_sum):
+            if size > 0:
+                body_start = i
+                break
+
+        body_stop = 0
+        body_sum_flip = np.flip(body_sum, axis=0)
+        for i, size in enumerate(body_sum_flip):
+            if size > 0:
+                body_stop = body_sum.shape[0] - i
+                break
+
+        body_center = body_start + (body_stop - body_start) / 2
+
+        left_body_sum = np.sum(body_sum[0:int(body_center)])
+        right_body_sum = np.sum(body_sum[int(body_center): body_stop])
+
+        if left_body_sum > right_body_sum:
+            larvae_direction = "left"
+        else:
+            larvae_direction = "right"
+
+        # Myotome height
+        myotome_measure_x = 0
+        if larvae_direction == "right":
+            for i in range(int(body_center - 100), int(body_stop)):
+                if body_diff[i] > 2:
+                    myotome_measure_x = i - 20
+                    break
+                elif np.sum(body_diff[i - 10:i]) > 4:
+                    myotome_measure_x = i - 20
+                    break
+        else:
+            for i in range(int(body_center + 100), int(body_start), -1):
+                if body_diff[i] > 2:
+                    myotome_measure_x = i + 20
+                    break
+                elif np.sum(body_diff[i:i + 10]) > 4:
+                    myotome_measure_x = i + 20
+                    break
+
+        myotome_height = body_sum[myotome_measure_x]
+
+        x0 = myotome_measure_x
+        x1 = myotome_measure_x
+        y0 = 0
+        for pix in range(0, body_mask.shape[0]):
+            if body_mask[pix, myotome_measure_x]:
+                y0 = pix
+                break
+        y1 = int(y0 + body_sum[myotome_measure_x])
+
+        x_theta = myotome_measure_x + 50
+        y_theta = 0
+        for pix in range(0, body_mask.shape[0]):
+            if x_theta < body_mask.shape[1]:
+                if body_mask[pix, x_theta]:
+                    y_theta = pix
+                    break
+
+        theta = np.arctan((y_theta - y0) / (x_theta - x0))
+
+        _x0_corr = (y_theta - y0) / (x_theta - x0) * myotome_height
+        x0_corr = int(x0 + _x0_corr)
+        y0_corr = int(y0 + _x0_corr * np.tan(theta))
+
+        corrected_myotome_height = np.sqrt(pow(x0_corr - x1, 2) + pow(y0_corr - y1, 2))
+        myotome_height = corrected_myotome_height / scale
+
+        # Draw Myotome Height on image
+        im = cv.line(im, (x0_corr, y0_corr), (x1, y1), (0, 255, 255), 2)
+
+        # Myotome length
+        skeleton = sk_morph.skeletonize(body_mask)
+
+        ## Find P_hm and h_m
+        P_hm_x = myotome_measure_x
+        P_hm_y = y0
+        h_m = 0
+        for pix in range(y0, skeleton.shape[0]):
+            if skeleton[pix, P_hm_x]:
+                P_hm_y = pix
+                h_m = pix - y0
+                break
+
+        ## Find P_h
+        x0 = y0 = 0
+        done = False
+
+        if larvae_direction == "left":
+            x_scan_range = range(body_mask.shape[1])
+        else:
+            x_scan_range = range(body_mask.shape[1] - 1, 0, -1)
+
+        for x in x_scan_range:
+            for y in range(body_mask.shape[0] - 1, 0, -1):
+                if body_mask[y, x] == 1:
+                    x0 = x
+                    y0 = y
+                    done = True
+                    break
+            if done:
+                break
+
+        P_hx = x0
+        P_hy = y0
+
+        ## Find P_hb
+        P_hbx = int(P_hx + (P_hm_x - P_hx) / 7 * 3)
+        P_hby = 0
+        for pix in range(0, body_mask.shape[0]):
+            if body_mask[pix, P_hbx]:
+                P_hby = pix + h_m
+                break
+
+        skeleton = skeleton.astype(np.uint8)
+        skeleton[min(P_hy, P_hm_y) - 400:max(P_hy, P_hm_y) + 400, min(P_hx, P_hm_x):max(P_hx, P_hm_x)] = 0
+        skeleton = cv.line(skeleton, (P_hm_x, P_hm_y), (P_hbx, P_hby), 1, 1)
+        skeleton = cv.line(skeleton, (P_hbx, P_hby), (P_hx, P_hy), 1, 1)
+
+        x = x0
+        y = y0
+        myotome_length = 0
+        sqrt_two = np.sqrt(2)
+        x_step = 0
+
+        if larvae_direction == "left":
+            x_step = 1
+        elif larvae_direction == "right":
+            x_step = -1
+
+        while True:
+            skeleton[y, x] = False
+
+            # Draw myotome length on output image
+            im[y - 1:y + 2, x, :] = [0, 0, 255]
+
+            if skeleton[y - 1, x]:
+                myotome_length = myotome_length + 1
+                x = x
+                y = y - 1
+            elif skeleton[y - 1, x + x_step]:
+                myotome_length = myotome_length + sqrt_two
+                x = x + x_step
+                y = y - 1
+            elif skeleton[y, x + x_step]:
+                myotome_length = myotome_length + 1
+                x = x + x_step
+                y = y
+            elif skeleton[y + 1, x + x_step]:
+                myotome_length = myotome_length + sqrt_two
+                x = x + x_step
+                y = y + 1
+            elif skeleton[y + 1, x]:
+                myotome_length = myotome_length + 1
+                x = x
+                y = y + 1
+            else:
+                break
+
+        myotome_length = myotome_length / scale
+        body_area = np.sum(body_mask) / (scale ** 2)
+
+        return im
+
+
 def main():
     show_images = False
+    write_images = True
     write_csv = True
 
-    image_root_folder = '/media/dave/SINTEF Polar Night D/Easter cod experiments/Bernard/'
-    nn_output_root_folder = '/home/dave/cod_results/2106/'
+    image_root_folder = '/media/dave/dave_8tb/2021/'
+    # nn_output_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/'
+    # image_out_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/images/'
+    nn_output_root_folder = '/media/dave/DATA/2115/'
+    image_out_root_folder = '/media/dave/DATA/2115/images/'
 
-    dates = ['20200413', '20200414', '20200415', '20200416', '20200417']
-    treatments = ['1', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
+
+    dates = ['20210419', '20210420', '20210421', '20210422', '20210423', '20210424', '20210425']
+    treatments = ['1', '2', '3', 'sw1_1', 'sw1_2', 'sw3_1', 'sw3_2', 'sw3_3', 'ulsfo-28d-1_1', 'ulsfo-28d-1_2', 'ulsfo-28d-1_3',
+                  'statfjord-4d-1', 'statfjord-4d-1_2', 'statfjord-4d-3', 'statfjord-4d-3_2', 'statfjord-14d-4',
+                  'statfjord-14d-4_2', 'statfjord-21d-2', 'statfjord-21d-2_2', 'statfjord-40d-4', 'statfjord-40d-4_2',
+                  'statfjord-60d-2', 'statfjord-60d-2_2', 'sw-4d-3', 'sw-60d-2', 'sw-60d-2_2', 'sw-60d-3', 'sw-60d-4',
+                  'sw-60d-4_2', 'ulsfo-28d-1', 'ulsfo-28d-1_2', 'ulsfo-28d-2', 'ulsfo-28d-2_2', 'ulsfo-28d-4',
+                  'ulsfo-28d-4_2', 'ulsfo-60d-1', 'ulsfo-60d-1_2', 'ulsfo-60d-2', 'ulsfo-60d-2_2', 'statfjord-28d-3',
+                  'statfjord-60d-3', 'sw3', 'sw4', 'sw-4d-1', 'sw-60d-1', 'ulsfo-4d-3', 'ulsfo-60d-3']
     done = []
 
-    for date in dates:
-        for treatment in treatments:
-            nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
-            image_folder = os.path.join(image_root_folder, date, treatment)
+    # 2020 reanalysis
+    image_root_folder = '/media/dave/dave_8tb/Easter_2020/Bernard'
+    nn_output_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/'
+    image_out_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/images'
 
-            if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
-                if os.path.join(date, treatment) in done:
-                    print('Skipping previously analysed folder {}'.format(nn_output_folder))
-                else:
-                    print('Analysing {}'.format(nn_output_folder))
-                    analyse_folder(nn_output_folder, image_folder, show_images, write_csv)
-                    # print('    ...done')
+    # dates = ['20200412', '20200413', '20200414', '20200415', '20200416', '20200417']
+    # treatments = ['1', '2', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+
+    dates = ['20200413', '20200416']
+    treatments = ['1', 'DCA-ctrl']
+
+    done = ['20200416/1', '20200413/DCA-ctrl']
+
+    try:
+        for date in dates:
+            for treatment in treatments:
+                nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
+                image_folder = os.path.join(image_root_folder, date, treatment)
+                image_out_folder = os.path.join(image_out_root_folder, date, treatment)
+
+                if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
+                    if os.path.join(date, treatment) in done:
+                        print('Skipping previously analysed folder {}'.format(nn_output_folder))
+                    else:
+                        print('Analysing {}'.format(nn_output_folder))
+                        analyse_folder(nn_output_folder, image_folder, image_out_folder, show_images, write_csv, write_images)
+                        # print('    ...done')
+    except Exception as err:
+        foo = -1
 
 
 main()
