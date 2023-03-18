@@ -1,11 +1,15 @@
 import os
 import re
 from matplotlib import pyplot as plt
+from matplotlib.ticker import (MultipleLocator, FixedLocator)
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import statsmodels.api as sm
 from statannotations.Annotator import Annotator
-import ptitprince as pt
+
+from plotting_functions import PlottingFunctions as pf
+# import ptitprince as pt
 
 
 def load_csv_files(root_folder, dates, treatments) -> pd.DataFrame:
@@ -35,6 +39,8 @@ def prepare_dataframe(df, root_folder, dates, treatments) -> pd.DataFrame:
             if os.path.isdir(dir_path):
                 df = exclude_bad_measurements(df, dir_path)
 
+    df = manual_exclusions(df)  # Stuff that I missed in checking and added after
+
     # Set datetime from Image ID
     df['Date'] = df['Image ID'].apply(
         lambda x: '{}-{}-{}{}:{}:{}'.format(x[1:5], x[5:7], x[7:9], x[9:12], x[12:14], x[14:]))
@@ -43,11 +49,20 @@ def prepare_dataframe(df, root_folder, dates, treatments) -> pd.DataFrame:
     df = df.drop(df.index[df['Image ID'] == 'Image ID'].tolist()).reset_index(drop=True)
     # Drop unused columns
     df = df.drop(columns=['Dev.', 'Myotome height[mm]'])
+
     # df = df.drop(columns=['Image ID', 'Dev.', 'Myotome height[mm]'])
     # Collapse multiple runs of the same treatment together
     df.loc[df['Treatment'] == 2, ['Treatment']] = 1
     df.loc[df['Treatment'] == 3, ['Treatment']] = 1
     df['Treatment'].replace(to_replace='_[0-9]$', value='', regex=True, inplace=True)
+
+    df.loc[df['Treatment'] == 'DCA-ctrl', ['Treatment']] = 'Control'
+    df.loc[df['Treatment'] == 'DCA-0,15', ['Treatment']] = '8 $\mu$g/L'
+    df.loc[df['Treatment'] == 'DCA-0,31', ['Treatment']] = '27 $\mu$g/L'
+    df.loc[df['Treatment'] == 'DCA-0,62', ['Treatment']] = '108 $\mu$g/L'
+    df.loc[df['Treatment'] == 'DCA-1,25', ['Treatment']] = '220 $\mu$g/L'
+    df.loc[df['Treatment'] == 'DCA-2,50', ['Treatment']] = '343 $\mu$g/L'
+    df.loc[df['Treatment'] == 'DCA-5,00', ['Treatment']] = '747 $\mu$g/L'
 
     df = additional_calcs(df)
     df = df.rename(columns={'Yolk fraction': 'Yolk fraction (area)'})
@@ -93,6 +108,25 @@ def additional_calcs(df):
     return df
 
 
+def manual_exclusions(df: pd.DataFrame):
+    # I looked at outliers and then went back to the images and manually checked the limits beyond which all values
+    # were errors during manual checking
+    idx = df.loc[df['Myotome length[mm]'] > 5.8].index
+    df.loc[idx, 'Myotome length[mm]'] = np.nan
+
+    idx = df.loc[df.apply(lambda x: x['Image ID'] in ['D20200413T160741.993912', 'D20200415T165340.726249', 'D20200413T134154.915613'], axis=1)].index
+    df.loc[idx, 'Body area[mm2]'] = np.nan
+    df.loc[idx, 'Myotome length[mm]'] = np.nan
+    df.loc[idx, 'Yolk fraction'] = np.nan
+
+    idx = df.loc[df['Eye max diameter[mm]'] > 0.46].index
+    df.loc[idx, 'Eye max diameter[mm]'] = np.nan
+    df.loc[idx, 'Eye min diameter[mm]'] = np.nan
+    df.loc[idx, 'Eye area[mm2]'] = np.nan
+
+    return df
+
+
 def exclude_bad_measurements(df, folder_path) -> pd.DataFrame:
     note_file = os.path.join(folder_path, 'bad_measurements.csv')
     if os.path.isfile(note_file):
@@ -117,35 +151,35 @@ def exclude_bad_measurements(df, folder_path) -> pd.DataFrame:
                 # df.drop(index=idx)
                 pass
 
-    recheck_file = os.path.join(folder_path, 'rechecked_measurements.csv')
-    if os.path.isfile(recheck_file):
-        rc_df = pd.read_csv(recheck_file, dtype={'Image ID': str, 'Fish ID': int, 'Body area[mm]': float, 'Eye min diameter[mm]': float, 'Body bad': bool, 'Eye bad': bool, 'Yolk bad': bool})
-        bad_bodies = rc_df.loc[rc_df[rc_df['Body bad'] == True].index]
-        for i in bad_bodies.index:
-            rows = df[(df['Image ID'] == bad_bodies['Image ID'][i]) &
-                      (df['Fish ID'] == bad_bodies['Fish ID'][i]) &
-                      (df['Body area[mm2]'] == bad_bodies['Body area[mm2]'][i])]
-            df.loc[rows.index, 'Body area[mm2]'] = np.nan
-            df.loc[rows.index, 'Myotome length[mm]'] = np.nan
-            df.loc[rows.index, 'Yolk fraction[mm2]'] = np.nan
+        recheck_file = os.path.join(folder_path, 'rechecked_measurements.csv')
+        if os.path.isfile(recheck_file):
+            rc_df = pd.read_csv(recheck_file, dtype={'Image ID': str, 'Fish ID': int, 'Body area[mm]': float, 'Eye min diameter[mm]': float, 'Body bad': bool, 'Eye bad': bool, 'Yolk bad': bool})
+            bad_bodies = rc_df.loc[rc_df[rc_df['Body bad'] == True].index]
+            for i in bad_bodies.index:
+                rows = df[(df['Image ID'] == bad_bodies['Image ID'][i]) &
+                          (df['Fish ID'] == bad_bodies['Fish ID'][i]) &
+                          (df['Body area[mm2]'] == bad_bodies['Body area[mm2]'][i])]
+                df.loc[rows.index, 'Body area[mm2]'] = np.nan
+                df.loc[rows.index, 'Myotome length[mm]'] = np.nan
+                df.loc[rows.index, 'Yolk fraction'] = np.nan
 
-        bad_eyes = rc_df.loc[rc_df[rc_df['Eye bad'] == True].index]
-        for i in bad_eyes.index:
-            rows = df[(df['Image ID'] == bad_eyes['Image ID'][i]) &
-                      (df['Fish ID'] == bad_eyes['Fish ID'][i]) &
-                      (df['Eye min diameter[mm]'] == bad_eyes['Eye min diameter[mm]'][i])]
-            df.loc[rows.index, 'Eye area[mm2]'] = np.nan
-            df.loc[rows.index, 'Eye min diameter[mm]'] = np.nan
-            df.loc[rows.index, 'Eye max diameter[mm]'] = np.nan
-        bad_yolks = rc_df.loc[rc_df[rc_df['Yolk bad'] == True].index]
-        for i in bad_yolks.index:
-            rows = df[(df['Image ID'] == bad_yolks['Image ID'][i]) &
-                      (df['Fish ID'] == bad_yolks['Fish ID'][i]) &
-                      (df['Yolk area[mm2]'] == bad_yolks['Yolk area[mm2]'][i])]
-            df.loc[rows.index, 'Yolk area[mm2]'] = np.nan
-            df.loc[rows.index, 'Yolk length[mm]'] = np.nan
-            df.loc[rows.index, 'Yolk height[mm]'] = np.nan
-            df.loc[rows.index, 'Yolk fraction'] = np.nan
+            bad_eyes = rc_df.loc[rc_df[rc_df['Eye bad'] == True].index]
+            for i in bad_eyes.index:
+                rows = df[(df['Image ID'] == bad_eyes['Image ID'][i]) &
+                          (df['Fish ID'] == bad_eyes['Fish ID'][i]) &
+                          (df['Eye min diameter[mm]'] == bad_eyes['Eye min diameter[mm]'][i])]
+                df.loc[rows.index, 'Eye area[mm2]'] = np.nan
+                df.loc[rows.index, 'Eye min diameter[mm]'] = np.nan
+                df.loc[rows.index, 'Eye max diameter[mm]'] = np.nan
+            bad_yolks = rc_df.loc[rc_df[rc_df['Yolk bad'] == True].index]
+            for i in bad_yolks.index:
+                rows = df[(df['Image ID'] == bad_yolks['Image ID'][i]) &
+                          (df['Fish ID'] == bad_yolks['Fish ID'][i]) &
+                          (df['Yolk area[mm2]'] == bad_yolks['Yolk area[mm2]'][i])]
+                df.loc[rows.index, 'Yolk area[mm2]'] = np.nan
+                df.loc[rows.index, 'Yolk length[mm]'] = np.nan
+                df.loc[rows.index, 'Yolk height[mm]'] = np.nan
+                df.loc[rows.index, 'Yolk fraction'] = np.nan
 
     else:
         print('No bad_measurements.csv for {}'.format(folder_path))
@@ -194,13 +228,15 @@ def plot_treatment_attribute(df: pd.DataFrame, treatment: str, attribute: str):
 
 
 def boxplot_by_treatment(df: pd.DataFrame, date: str, attribute: str):
+    sns.color_palette('colorblind')
+
     data = df.loc[(df['DateTime'].dt.date == pd.to_datetime(date))]
     x = 'Treatment'
     y = attribute
 
     ax = sns.boxplot(x=x, y=y, data=data)
-    pairs = [('DCA-ctrl', 'DCA-0,15'), ('DCA-ctrl', 'DCA-0,31'), ('DCA-ctrl', 'DCA-0,62'), ('DCA-ctrl', 'DCA-1,25'), ('DCA-ctrl', 'DCA-2,50')]
-
+    # pairs = [('DCA-ctrl', 'DCA-0,15'), ('DCA-ctrl', 'DCA-0,31'), ('DCA-ctrl', 'DCA-0,62'), ('DCA-ctrl', 'DCA-1,25'), ('DCA-ctrl', 'DCA-2,50')]
+    pairs = [('Control', '8 μg/L'), ('Control', '27 μg/L'), ('Control', '108 μg/L'), ('Control', '220 μg/L'), ('Control', '343 μg/L')]
     annotator = Annotator(ax, pairs, data=data, x=x, y=y)
     annotator.configure(test='Kruskal', text_format='star', loc='inside')
     _, results = annotator.apply_and_annotate()
@@ -226,49 +262,54 @@ def swarmplot_by_treatment_all_dates(df: pd.DataFrame, attribute: str):
 
 
 def boxplot_by_treatment_all_dates(df: pd.DataFrame, attribute: str):
+    sns.color_palette('colorblind')
+
     data = df.loc[(df['DateTime'].dt.date <= pd.to_datetime('20200417'))]
     x = 'Treatment'
     y = attribute
     hue = df['DateTime'].dt.date
 
-    figsize = (12, 12)
+    figsize = (8, 8)
     f, ax = plt.subplots(figsize=figsize)
     ax = sns.boxplot(x=x, y=y, hue=hue, data=data)
-    pairs = [('DCA-ctrl', 'DCA-0,15'), ('DCA-ctrl', 'DCA-0,31'), ('DCA-ctrl', 'DCA-0,62'), ('DCA-ctrl', 'DCA-1,25'), ('DCA-ctrl', 'DCA-2,50')]
+    # pairs = [('DCA-ctrl', 'DCA-0,15'), ('DCA-ctrl', 'DCA-0,31'), ('DCA-ctrl', 'DCA-0,62'), ('DCA-ctrl', 'DCA-1,25'), ('DCA-ctrl', 'DCA-2,50')]
+    pairs = [('Control', '8 μg/L'), ('Control', '27 μg/L'), ('Control', '108 μg/L'), ('Control', '220 μg/L'),
+             ('Control', '343 μg/L')]
 
     annotator = Annotator(ax, pairs, data=data, x=x, y=y)
     annotator.configure(test='Kruskal', text_format='star', loc='inside', comparisons_correction='bonferroni')
     _, results = annotator.apply_and_annotate()
 
     # Show number of observations
-    n_obs = data.loc[data[attribute].notna()].groupby([x, hue]).size().values
-    n_obs = [str(x) for x in n_obs.tolist()]
+    # n_obs = data.loc[data[attribute].notna()].groupby([x, hue]).size().values
+    # n_obs = [str(x) for x in n_obs.tolist()]
+    #
+    # lines = ax.get_lines()
+    # boxes = [c for c in ax.get_children() if type(c).__name__ == 'PathPatch']
+    # lines_per_box = int(len(lines) / len(boxes))
+    # i = 0
+    # for median in lines[4:len(lines)-1:lines_per_box]:
+    #     x, y = (data.mean() for data in median.get_data())
+    #     # 'n: ' label on left side
+    #     if i == 0:
+    #         ax.text(x - 0.2,
+    #                 -0.02,
+    #                 'n:',
+    #                 ha='center', va='center',
+    #                 size='x-small', fontweight='semibold', color='k')
+    #     # Number of observations below each bar
+    #     ax.text(x,
+    #             -0.02,
+    #             n_obs[i],
+    #             ha='center', va='center',
+    #             size='x-small', fontweight='semibold', color='k')
+    #     i += 1
 
-    lines = ax.get_lines()
-    boxes = [c for c in ax.get_children() if type(c).__name__ == 'PathPatch']
-    lines_per_box = int(len(lines) / len(boxes))
-    i = 0
-    for median in lines[4:len(lines)-1:lines_per_box]:
-        x, y = (data.mean() for data in median.get_data())
-        # 'n: ' label on left side
-        if i == 0:
-            ax.text(x - 0.2,
-                    -0.02,
-                    'n:',
-                    ha='center', va='center',
-                    size='x-small', fontweight='semibold', color='k')
-        # Number of observations below each bar
-        ax.text(x,
-                -0.02,
-                n_obs[i],
-                ha='center', va='center',
-                size='x-small', fontweight='semibold', color='k')
-        i += 1
-
-    ax.set_title('Larvae - {}'.format(attribute))
+    ax.set_title('Endpoint: {}'.format(attribute))
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig('/media/dave/Seagate Hub/PhD Work/Writing/dca-paper/saved-figs/larvae_{}'.format(attribute))
+    # plt.show()
 
 
 def main():
@@ -277,17 +318,38 @@ def main():
     df = load_csv_files(root_folder, dates, treatments)
     df = prepare_dataframe(df, root_folder, dates, treatments)
 
+    df.to_csv('/media/dave/Seagate Hub/PhD Work/Writing/dca-paper/larvae_stats_full.csv')
+
+    attributes = ['Body area[mm2]', 'Myotome length[mm]', 'Eye area[mm2]', 'Yolk area[mm2]', 'Yolk fraction (area)']
+    dpf = [12, 13, 14, 15, 16]
+    lifestage = 'Larvae'
+
+    pf.calculate_ancova(df, attributes, dpf, lifestage)
+    # pf.plot_control_attributes(df, attributes, dpf, lifestage)
+    #pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
+    # pf.new_lineplot_by_treatment(df, attributes, dpf, lifestage)
+    # pf.calculate_anova_control(df, attributes, dpf)
+    # pf.lineplot_by_treatment(df, attributes, dpf)
+
+    foo = -1
     # plot_date_attribute(df, '20200413', 'Eye area[mm2]')
+
+
+
+    # for attribute in ['Body area[mm2]', 'Myotome length[mm]', 'Eye area[mm2]', 'Eye min diameter[mm]',
+    #                   'Eye max diameter[mm]', 'Yolk area[mm2]', 'Yolk length[mm]', 'Yolk height[mm]',
+    #                   'Yolk fraction (area)']:
+    #     boxplot_by_treatment_all_dates(df, attribute)
 
     # boxplot_by_treatment_all_dates(df, 'Eye area[mm2]')
     # boxplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
     # boxplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
     # boxplot_by_treatment_all_dates(df, 'Body area[mm2]')
-
-    swarmplot_by_treatment_all_dates(df, 'Eye area[mm2]')
-    swarmplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
-    swarmplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
-    swarmplot_by_treatment_all_dates(df, 'Body area[mm2]')
+    #
+    # swarmplot_by_treatment_all_dates(df, 'Eye area[mm2]')
+    # swarmplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
+    # swarmplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
+    # swarmplot_by_treatment_all_dates(df, 'Body area[mm2]')
 
     foo = -1
 

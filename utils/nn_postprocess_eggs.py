@@ -121,10 +121,15 @@ def draw_labels(im: np.ndarray, egg_measurements: list, yolk_measurements: list,
     #
     for fish in yolk_measurements:
         if fish:
-            area, pos_x, pos_y = fish['Yolk area[mm2]'], \
-                                 fish['Yolk pos[px]'][0] + padding_w, fish['Yolk pos[px]'][1] + padding_h
-            im = cv.putText(im, '{:0.3f}mm2'.format(area),
-                            (pos_x, pos_y), font, font_size, (255, 255, 0), line_weight, cv.LINE_AA)
+            try:
+                area, pos_x, pos_y = fish['Yolk area[mm2]'], \
+                                     fish['Yolk pos[px]'][0] + padding_w, fish['Yolk pos[px]'][1] + padding_h
+                im = cv.putText(im, '{:0.3f}mm2'.format(area),
+                                (pos_x, pos_y), font, font_size, (255, 255, 0), line_weight, cv.LINE_AA)
+            except TypeError:
+                # Comes up when we don't have valid values for pos due to IndexError in measure_yolk below
+                # Should be safe to just ignore and continue
+                pass
 
     for fish in eye_measurements:
         if fish:
@@ -660,11 +665,12 @@ def main():
     # dates = ['20200404', '20200405', '20200406', '20200407', '20200408', '20200409', '20200410', '20200411', '20200412']
     dates = ['20200408', '20200409', '20200410', '20200411', '20200412', '20200404', '20200405', '20200406', '20200407']
     treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
-    done = ['20200408/1',
-        '20200410/DCA-2,50', '20200411/DCA-0,15']
+    done = []
+        # ['20200410/DCA-2,50', '20200411/DCA-0,15']
 
-    for date in dates:
-        for treatment in treatments:
+    # for date in dates:
+    #     for treatment in treatments:
+    for date, treatment in [('20200411', 'DCA-0,15')]:
             nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
             image_folder = os.path.join(image_root_folder, date, treatment)
 

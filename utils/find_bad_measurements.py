@@ -13,9 +13,10 @@ def main():
         done = ['20200416/DCA-ctrl', '20200416/DCA-0,15', '20200416/DCA-0,31', '20200416/DCA-0,62']
     elif stage == 'eggs':
         root_folder = '/media/dave/DATA/2020_reanalysis/eggs/1151/'
-        dates = ['20200408', '20200409', '20200410', '20200411', '20200412']
-        treatments = ['DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
-        done = []
+        dates = ['20200412']
+        # treatments = ['DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+        treatments = ['DCA-2,50']
+        done = ['']
 
     run(root_folder, stage, dates, treatments, done)
     # run_recheck(root_folder, stage, dates, treatments, done)
@@ -44,20 +45,36 @@ def run_recheck(root_folder, stage, dates, treatments, done):
         line_offset = 25
 
         this_frame = df[df['Image ID'] == ims[current_im_num]]
-        num_to_check = this_frame.loc[:, ['Body area[mm2]', 'Eye min diameter[mm]', 'Yolk area[mm2]']].count().sum()
+        # num_to_check = this_frame.loc[:, ['Body area[mm2]', 'Eye min diameter[mm]', 'Yolk area[mm2]']].count().sum()
         current_check = 0
         text_lines = []
         for n, fish_id in enumerate(this_frame['Fish ID'].unique()):
-            bodies = this_frame[this_frame['Fish ID'] == fish_id]['Body area[mm2]'].dropna()
-            eyes = this_frame[this_frame['Fish ID'] == fish_id]['Eye min diameter[mm]'].dropna()
+            if stage == 'larvae':
+                bodies = this_frame[this_frame['Fish ID'] == fish_id]['Body area[mm2]'].dropna()
+            elif stage == 'eggs':
+                embryos = this_frame[this_frame['Fish ID'] == fish_id]['Embryo area[mm2]'].dropna()
+                eggs = this_frame[this_frame['Fish ID'] == fish_id]['Egg min diameter[mm]'].dropna()
+            else:
+                raise RuntimeWarning('Invalid life stage selected')
+            eyes = this_frame[this_frame['Fish ID'] == fish_id]['Eye area[mm2]'].dropna()
             yolks = this_frame[this_frame['Fish ID'] == fish_id]['Yolk area[mm2]'].dropna()
 
             text_lines.append('Fish {}'.format(n + 1))
-            for body in zip(bodies.index, bodies):
-                text_lines.append('  Body {:.3f} ({}): {}'.format(body[1], chr(97 + current_check), df[df.index == body[0]]['Body bad'].values[0]))
-                current_check += 1
+            if stage == 'larvae':
+                for body in zip(bodies.index, bodies):
+                    text_lines.append('  Body {:.3f} ({}): {}'.format(body[1], chr(97 + current_check), df[df.index == body[0]]['Body bad'].values[0]))
+                    current_check += 1
+            elif stage == 'eggs':
+                for embryo in zip(embryos.index, embryos):
+                    text_lines.append('  Embryo {:.3f} ({}): {}'.format(embryo[1], chr(97 + current_check), df[df.index == embryo[0]]['Embryo bad'].values[0]))
+                    current_check += 1
+                for egg in zip(eggs.index, eggs):
+                    text_lines.append('  Egg {:.3f} ({}): {}'.format(egg[1], chr(97 + current_check), df[df.index == egg[0]]['Egg bad'].values[0]))
+                    current_check += 1
+            else:
+                raise RuntimeWarning('Invalid life stage selected')
             for eye in zip(eyes.index, eyes):
-                text_lines.append('  Eye {:.3f} ({}): {}'.format(eye[1], chr(97 + current_check), df[df.index == eye[0]]['Eye bad'].values[0]))
+                text_lines.append('  Eye {:.4f} ({}): {}'.format(eye[1], chr(97 + current_check), df[df.index == eye[0]]['Eye bad'].values[0]))
                 current_check += 1
             for yolk in zip(yolks.index, yolks):
                 text_lines.append('  Yolk {:.3f} ({}): {}'.format(yolk[1], chr(97 + current_check), df[df.index == yolk[0]]['Yolk bad'].values[0]))
@@ -74,7 +91,21 @@ def run_recheck(root_folder, stage, dates, treatments, done):
 
         return img
 
-    def write_to_file():
+    def write_to_file(df):
+        df = df.drop(columns=['Egg max diameter[mm]', 'Egg area[mm2]',
+                              'Eye max diameter[mm]', 'Eye area[mm2]',
+                              'Yolk length[mm]', 'Yolk height[mm]'])
+        type_dict = {'Image ID': str,
+                     'Fish ID': int,
+                     'Embryo area[mm2]': float,
+                     'Embryo bad': bool,
+                     'Eye min diameter[mm]': float,
+                     'Eye bad': bool,
+                     'Yolk area[mm2]': float,
+                     'Yolk bad': bool,
+                     'Egg min diameter[mm]': float,
+                     'Egg bad': bool}
+        df = df.astype(type_dict)
         df.to_csv(os.path.join(root_folder, date, treatment, 'rechecked_measurements.csv'), sep=',', index=False, )
 
     for date in dates:
@@ -102,8 +133,28 @@ def run_recheck(root_folder, stage, dates, treatments, done):
                                      'Yolk bad': bool}
                         df = df.astype(type_dict)
                     elif stage == 'eggs':
-                        pass
+                        df = df.drop(columns=['Date', 'Treatment', 'Dev.'])#,
+                                              # 'Egg max diameter[mm]', 'Egg area[mm2]',
+                                              # 'Eye max diameter[mm]', 'Eye area[mm2]',
+                                              # 'Yolk length[mm]', 'Yolk height[mm]'])
+                        df['Embryo bad'] = False
+                        df['Eye bad'] = False
+                        df['Yolk bad'] = False
+                        df['Egg bad'] = False
 
+                        type_dict = {'Image ID': str,
+                                     'Fish ID': int,
+                                     'Embryo area[mm2]': float,
+                                     'Embryo bad': bool,
+                                     'Eye min diameter[mm]': float,
+                                     'Eye bad': bool,
+                                     'Yolk area[mm2]': float,
+                                     'Yolk bad': bool,
+                                     'Egg min diameter[mm]': float,
+                                     'Egg bad': bool}
+                        # df = df.astype(type_dict)
+                    else:
+                        raise RuntimeWarning('Invalid life stage selected')
                     note_file = os.path.join(dir_path, 'bad_measurements.csv')
                     if os.path.isfile(note_file):
                         notes = np.loadtxt(note_file, delimiter=', ', skiprows=1, dtype=str) #, dtype={'names': ('Image ID', 'eye', 'body', 'yolk', 'recheck'), 'formats': (str, bool, bool, bool, bool)})
@@ -136,18 +187,40 @@ def run_recheck(root_folder, stage, dates, treatments, done):
 
                                 elif k in range(ord('a'), ord('z') + 1):
                                     this_frame = df[df['Image ID'] == ims[current_im_num]]
-                                    num_to_check = this_frame.loc[:, ['Body area[mm2]', 'Eye min diameter[mm]',
-                                                                      'Yolk area[mm2]']].count().sum()
+                                    # num_to_check = this_frame.loc[:, ['Body area[mm2]', 'Eye min diameter[mm]',
+                                    #                                   'Yolk area[mm2]']].count().sum()
                                     current_check = 0
                                     for n, fish_id in enumerate(this_frame['Fish ID'].unique()):
-                                        bodies = this_frame[this_frame['Fish ID'] == fish_id]['Body area[mm2]'].dropna()
+                                        if stage == 'larvae':
+                                            bodies = this_frame[this_frame['Fish ID'] == fish_id]['Body area[mm2]'].dropna()
+                                        elif stage == 'eggs':
+                                            embryos = this_frame[this_frame['Fish ID'] == fish_id][
+                                                'Embryo area[mm2]'].dropna()
+                                            eggs = this_frame[this_frame['Fish ID'] == fish_id][
+                                                'Egg min diameter[mm]'].dropna()
+                                        else:
+                                            raise RuntimeWarning('Invalid life stage selected')
                                         eyes = this_frame[this_frame['Fish ID'] == fish_id]['Eye min diameter[mm]'].dropna()
                                         yolks = this_frame[this_frame['Fish ID'] == fish_id]['Yolk area[mm2]'].dropna()
 
-                                        for body in zip(bodies.index, bodies):
-                                            if k == 97 + current_check:
-                                                df.loc[df.index == body[0], 'Body bad'] = ~df.loc[df.index == body[0], 'Body bad']
-                                            current_check += 1
+                                        if stage == 'larvae':
+                                            for body in zip(bodies.index, bodies):
+                                                if k == 97 + current_check:
+                                                    df.loc[df.index == body[0], 'Body bad'] = ~df.loc[df.index == body[0], 'Body bad']
+                                                current_check += 1
+                                        elif stage == 'eggs':
+                                            for embryo in zip(embryos.index, embryos):
+                                                if k == 97 + current_check:
+                                                    df.loc[df.index == embryo[0], 'Embryo bad'] = ~df.loc[
+                                                        df.index == embryo[0], 'Embryo bad']
+                                                current_check += 1
+                                            for egg in zip(eggs.index, eggs):
+                                                if k == 97 + current_check:
+                                                    df.loc[df.index == egg[0], 'Egg bad'] = ~df.loc[
+                                                        df.index == egg[0], 'Egg bad']
+                                                current_check += 1
+                                        else:
+                                            raise RuntimeWarning('Invalid life stage selected')
                                         for eye in zip(eyes.index, eyes):
                                             if k == 97 + current_check:
                                                 df.loc[df.index == eye[0], 'Eye bad'] = ~df.loc[df.index == eye[0], 'Eye bad']
@@ -162,9 +235,9 @@ def run_recheck(root_folder, stage, dates, treatments, done):
                                     if k == 27:  # escape
                                         quit()
                                     elif k == 13:  # enter
-                                        write_to_file()
+                                        write_to_file(df)
                                         loop = False
-                                write_to_file()
+                                write_to_file(df)
 
                     else:
                         raise RuntimeWarning('No notes file for {}'.format(root_folder))
