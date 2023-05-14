@@ -65,16 +65,17 @@ def prepare_dataframe(df, root_folder, dates, treatments) -> pd.DataFrame:
     df.loc[df['Treatment'] == 'DCA-5,00', ['Treatment']] = '747 $\mu$g/L'
 
     df = additional_calcs(df)
-    df = df.rename(columns={'Yolk fraction': 'Yolk fraction (area)'})
+    df = df.rename(columns={'Yolk fraction': 'Yolk fraction (area)', 'Body area[mm2]': 'Total body area[mm2]', 'Myotome length[mm]': 'Standard length[mm]'})
 
     # Change column types from object to appropriate numericals (required for plotting)
     type_dict = {'DateTime': 'datetime64',
                  'Treatment': str,
                  'Fish ID': int,
-                 'Body area[mm2]': float,
+                 'Total body area[mm2]': float,
+                 'Structural body area[mm2]': float,
                  'Total body volume[mm3]': float,
                  'Structural body volume[mm3]': float,
-                 'Myotome length[mm]': float,
+                 'Standard length[mm]': float,
                  'Eye area[mm2]': float,
                  'Eye min diameter[mm]': float,
                  'Eye max diameter[mm]': float,
@@ -91,6 +92,7 @@ def prepare_dataframe(df, root_folder, dates, treatments) -> pd.DataFrame:
 
 
 def additional_calcs(df):
+    df['Structural body area[mm2]'] = df['Body area[mm2]'] - df['Yolk area[mm2]']
     df['Total body volume[mm3]'] = ((df['Body area[mm2]'] * df['Body area[mm2]']) / df['Myotome length[mm]']) \
         .apply(lambda x: x * np.pi * 0.25)
     # Ellipsoid: 4/3 pi a^2 c
@@ -313,23 +315,42 @@ def boxplot_by_treatment_all_dates(df: pd.DataFrame, attribute: str):
 
 
 def main():
-    root_folder, dates, treatments = reprocess_2020()
+    # root_folder, dates, treatments = reprocess_2020()
 
-    df = load_csv_files(root_folder, dates, treatments)
-    df = prepare_dataframe(df, root_folder, dates, treatments)
+    # df = load_csv_files(root_folder, dates, treatments)
+    # df = prepare_dataframe(df, root_folder, dates, treatments)
+    # df.to_csv('/home/dave/Documents/RStudio/fish/larvae_stats_full.csv')
 
-    df.to_csv('/media/dave/Seagate Hub/PhD Work/Writing/dca-paper/larvae_stats_full.csv')
+    df = pd.read_csv('/home/dave/Documents/RStudio/fish/larvae_stats_full.csv')
+    df = df.drop(columns=['Unnamed: 0'])
+    type_dict = {'DateTime': 'datetime64',
+                 'Treatment': str,
+                 'Fish ID': int,
+                 'Total body area[mm2]': float,
+                 'Structural body area[mm2]': float,
+                 'Total body volume[mm3]': float,
+                 'Structural body volume[mm3]': float,
+                 'Standard length[mm]': float,
+                 'Eye area[mm2]': float,
+                 'Eye min diameter[mm]': float,
+                 'Eye max diameter[mm]': float,
+                 'Eye volume[mm3]': float,
+                 'Yolk area[mm2]': float,
+                 'Yolk length[mm]': float,
+                 'Yolk height[mm]': float,
+                 'Yolk volume[mm3]': float,
+                 'Yolk fraction (area)': float,
+                 'Yolk fraction (volume)': float}
+    df = df.astype(type_dict)
 
-    attributes = ['Body area[mm2]', 'Myotome length[mm]', 'Eye area[mm2]', 'Yolk area[mm2]', 'Yolk fraction (area)']
+    attributes = ['Total body area[mm2]', 'Structural body area[mm2]', 'Standard length[mm]', 'Eye area[mm2]', 'Yolk area[mm2]', 'Yolk fraction (area)']
     dpf = [12, 13, 14, 15, 16]
     lifestage = 'Larvae'
 
-    pf.calculate_ancova(df, attributes, dpf, lifestage)
-    # pf.plot_control_attributes(df, attributes, dpf, lifestage)
-    #pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
-    # pf.new_lineplot_by_treatment(df, attributes, dpf, lifestage)
-    # pf.calculate_anova_control(df, attributes, dpf)
-    # pf.lineplot_by_treatment(df, attributes, dpf)
+    # table_stats = pf.plot_control_attributes(df, attributes, dpf, lifestage)
+    table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
+    # table_latex = pf.prepare_latex_table(table_stats, control=False)
+    pf.lineplot_by_treatment(df, attributes, dpf, lifestage)
 
     foo = -1
     # plot_date_attribute(df, '20200413', 'Eye area[mm2]')
@@ -338,16 +359,16 @@ def main():
 
     # for attribute in ['Body area[mm2]', 'Myotome length[mm]', 'Eye area[mm2]', 'Eye min diameter[mm]',
     #                   'Eye max diameter[mm]', 'Yolk area[mm2]', 'Yolk length[mm]', 'Yolk height[mm]',
-    #                   'Yolk fraction (area)']:
+    #                   'Yolk fraction']:
     #     boxplot_by_treatment_all_dates(df, attribute)
 
     # boxplot_by_treatment_all_dates(df, 'Eye area[mm2]')
-    # boxplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
+    # boxplot_by_treatment_all_dates(df, 'Yolk fraction')
     # boxplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
     # boxplot_by_treatment_all_dates(df, 'Body area[mm2]')
     #
     # swarmplot_by_treatment_all_dates(df, 'Eye area[mm2]')
-    # swarmplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
+    # swarmplot_by_treatment_all_dates(df, 'Yolk fraction')
     # swarmplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
     # swarmplot_by_treatment_all_dates(df, 'Body area[mm2]')
 

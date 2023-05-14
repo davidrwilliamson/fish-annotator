@@ -392,32 +392,49 @@ def main():
 
     # 2020 reanalysis
     # root_folder = '/media/dave/DATA/2020_reanalysis/eggs/1088/'
-    root_folder = '/media/dave/DATA/2020_reanalysis/eggs/1151/'
-    dates = ['202004{:02d}'.format(i) for i in range(4, 13)]
-    treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
-    treatments = ['DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    # root_folder = '/media/dave/DATA/2020_reanalysis/eggs/1151/'
+    # dates = ['202004{:02d}'.format(i) for i in range(4, 13)]
+    # treatments = ['1', '2', '3', 'DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    # treatments = ['DCA-ctrl', 'DCA-ctrl-2', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    #
+    # df: pd.DataFrame = load_csv_files(root_folder, dates, treatments)
+    # df = prepare_dataframe(df, root_folder, dates, treatments)
+    # df = additional_calcs(df)
 
-    df: pd.DataFrame = load_csv_files(root_folder, dates, treatments)
-    df = prepare_dataframe(df, root_folder, dates, treatments)
-    df = additional_calcs(df)
+    df = pd.read_csv('/home/dave/Documents/RStudio/fish/egg_stats_full.csv')
+    df = df.drop(columns=['Unnamed: 0'])
+    type_dict = {'DateTime': 'datetime64',
+                 'Treatment': str,
+                 'Fish ID': int,
+                 'Egg area[mm2]': float,
+                 'Egg min diameter[mm]': float,
+                 'Egg max diameter[mm]': float,
+                 'Egg mean diameter[mm]': float,
+                 'Eye area[mm2]': float,
+                 'Eye min diameter[mm]': float,
+                 'Eye max diameter[mm]': float,
+                 'Yolk area[mm2]': float,
+                 'Yolk length[mm]': float,
+                 'Yolk height[mm]': float,
+                 'Embryo area[mm2]': float}
+    df = df.astype(type_dict)
 
-    df.to_csv('/media/dave/Seagate Hub/PhD Work/Writing/dca-paper/egg_stats_full.csv')
+    # df.to_csv('/media/dave/Seagate Hub/PhD Work/Writing/dca-paper/egg_stats_full.csv')
 
     attributes = ['Eye area[mm2]', 'Embryo area[mm2]', 'Egg mean diameter[mm]', 'Yolk area[mm2]',
                   'Yolk fraction (area)']
     dpf = [7, 8, 9, 10, 11]
     lifestage = 'Eggs'
 
-    # pf.plot_control_attributes(df, attributes, dpf, lifestage)
-    pf.calculate_ancova(df, attributes, dpf, lifestage)
-    pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
-    # pf.new_lineplot_by_treatment(df, attributes, dpf, lifestage)
-    # pf.calculate_anova_control(df, attributes)
+    df['Eye mean diameter[mm]'] = (df['Eye max diameter[mm]'] + df['Eye min diameter[mm]']) * 0.5
+    pf.calculate_precision(df)
+
+    # table_stats = pf.plot_control_attributes(df, attributes, dpf, lifestage)
+    table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
+    # table_latex = pf.prepare_latex_table(table_stats, control=False)
+    pf.lineplot_by_treatment(df, attributes, dpf, lifestage)
 
     ###
-
-    # pf.lineplot_by_treatment(df)
-    #
     # boxplot_by_treatment_all_dates(df, 'Egg diameter[mm]')
     # boxplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
     # boxplot_by_treatment_all_dates(df, 'Yolk fraction (area)')
