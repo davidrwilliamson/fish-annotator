@@ -40,7 +40,7 @@ class PlottingFunctions:
         table_stats = []
         for i, attribute in enumerate(attributes):
             curr_df = df[df['Endpoint'] == attribute]
-            sns.lineplot(ax=axs[i], data=curr_df, x=x, y=y,
+            lp = sns.lineplot(ax=axs[i], data=curr_df, x=x, y=y,
                          markers='x', errorbar='ci', err_style='bars', err_kws={'capsize': 5},
                          color='black')
 
@@ -66,6 +66,14 @@ class PlottingFunctions:
             ci_lower = pred.summary_frame()['mean_ci_lower']
             ci_upper = pred.summary_frame()['mean_ci_upper']
             sns.lineplot(ax=axs[i], data=curr_df, x=x, y=r.fittedvalues, color='red')
+
+            print(lp.dataLim.intervaly[0])
+            nobs = curr_df.groupby('dpf').count()['Value'].tolist()
+            for k, day in enumerate(dpf):
+                axs[i].text(day, lp.dataLim.intervaly[1],
+                            'n={}'.format(nobs[k]),
+                            size='x-small',
+                            horizontalalignment='center')
 
             axs[i].fill_between(data=curr_df, x=x, y1=ci_lower, y2=ci_upper, alpha=0.3, color='red')
 
@@ -100,6 +108,8 @@ class PlottingFunctions:
         df = df[df['dpf'].isin(dpf)]
 
         treatments = df['Treatment'].unique()
+
+        foo = -1
 
         figsize = (11, 12)
         fontsize = 14
@@ -280,6 +290,122 @@ class PlottingFunctions:
             # print('{}\n'.format(attribute))
             # print(r.summary())
             sns.lineplot(ax=axs[i], data=attr_df, x=x, y=r.fittedvalues, hue='treat', legend=False)
+
+            for count, treatment in enumerate(treatments):
+                treatment_df = attr_df.loc[attr_df['treat'] == treatment]
+                indices = treatment_df.index
+                ci_lower = pred.summary_frame()['mean_ci_lower'][indices]
+                ci_upper = pred.summary_frame()['mean_ci_upper'][indices]
+                axs[i].fill_between(data=treatment_df, x=x, y1=ci_lower, y2=ci_upper, alpha=0.3, color=palette[count])
+
+
+        if lifestage == 'Eggs':
+            bottom_idx = [2, 4]
+        elif lifestage == 'Larvae':
+            bottom_idx = [2, 5]
+
+        for i in bottom_idx:
+            axs[i].xaxis.set_major_locator(FixedLocator(dpf))
+            axs[i].set_xticklabels([str(d) for d in dpf], minor=False)
+            axs[i].xaxis.set_minor_locator(MultipleLocator(2))
+            axs[i].set_xlabel(r'Days post fertilization')
+
+        # fig.suptitle(r'{}: GLM regression --- All treatment groups'.format(lifestage))
+        plt.tight_layout()
+        plt.subplots_adjust(hspace=0, right=0.99, top=0.99)
+        fig.align_ylabels()
+        if lifestage == 'Eggs':
+            plt.figlegend(labels=[t for t in treatments], handles=[l for l in axs[0].lines], title='Treatment',
+                          loc='lower right', bbox_to_anchor=[0.8, 0.09], borderaxespad=0, frameon=False)
+        else:
+            plt.figlegend(labels=[t for t in treatments], handles=[l for l in axs[0].lines], title='Treatment',
+                          loc='lower right', bbox_to_anchor=[0.95, 0.18], borderaxespad=0, frameon=False)
+
+        plt.show()
+        return table_stats
+
+    @staticmethod
+    def compare_treatment_group_gams(df: pd.DataFrame, attributes: list, dpf: list, lifestage: str):
+        palette = sns.color_palette('colorblind')
+        attributes.append('DateTime')
+        attributes.append('Treatment')
+        df = df[attributes]
+        attributes.pop()
+        attributes.pop()
+        df = df.melt(id_vars=['DateTime', 'Treatment'], var_name='Endpoint', value_name='Value')
+        df = df[df['Value'].notna()]
+        basedate = pd.Timestamp('2020-04-01')
+        df['dpf'] = (df['DateTime'] - basedate).dt.days
+        df = df[df['dpf'].isin(dpf)]
+
+        treatments = df['Treatment'].unique()
+        df['treat'] = df['Treatment']
+        # df = df.rename(columns={'Treatment': 'treat'})
+
+        df.loc[df['treat'] == 'Control', 'treat'] = 0
+        df.loc[df['treat'] == '8 $\\mu$g/L', 'treat'] = 8
+        df.loc[df['treat'] == '27 $\\mu$g/L', 'treat'] = 27
+        df.loc[df['treat'] == '108 $\\mu$g/L', 'treat'] = 108
+        df.loc[df['treat'] == '220 $\\mu$g/L', 'treat'] = 220
+        df.loc[df['treat'] == '343 $\\mu$g/L', 'treat'] = 343
+        df.loc[df['treat'] == '747 $\\mu$g/L', 'treat'] = 747
+
+        df['treat'] = df['treat'].astype('float64')
+
+        figsize = (11, 12)
+        fontsize = 14
+        plt.rcParams.update({'text.usetex': True, 'font.size': fontsize})
+        x = 'dpf'
+        y = 'Value'
+        rows = 3
+        cols = 2
+
+        fig = plt.figure(figsize=figsize)
+        # Assign None to axes here but we'll shortly replace them with Axes
+        if lifestage == 'Eggs':
+            axs = [None, None, None, None, None]
+            idx = [1, 3, 5, 2, 4]
+            ylims = [(0.028, 0.0485), (0.31, 0.72), (1.315, 1.356), (0.91, 1.18), (0.48, 0.87)]
+            yticks = [[0.03, 0.035, 0.04, 0.045], [0.4, 0.5, 0.6, 0.7], [1.32, 1.33, 1.34, 1.35], [0.95, 1.0, 1.05, 1.1, 1.15],
+                      [0.5, 0.6, 0.7, 0.8]]
+        elif lifestage == 'Larvae':
+            axs = [None, None, None, None, None, None]
+            idx = [1, 3, 5, 2, 4, 6]
+            # Hand tuned plot limits and axis ticks to maintain consistency with other line plots
+            ylims = [(1.1, 1.53), (0.95, 1.5), (3.7, 4.87), (0.053, 0.076), (0.0, 0.42), (0.0, 0.38)]
+            yticks = [[1.2, 1.3, 1.4, 1.5], [1.0, 1.1, 1.2, 1.3, 1.4], [3.8, 4.0, 4.2, 4.4, 4.6, 4.8],
+                      [0.055, 0.06, 0.065, 0.07, 0.075], [0.0, 0.1, 0.2, 0.3, 0.4], [0.0, 0.1, 0.2, 0.3]]
+
+        # This will break if we change the rows/cols!
+        # We're doing it like this instead of f, axs = plt.subplots() because I can't figure out how to have an xlabel
+        # at the bottom otherwise if the bottom plot in the second column is removed
+        table_stats = []
+
+        for i, attribute in enumerate(attributes):
+            # plt.subplot Index starts at 1 in the upper left corner and increases to the right.
+            # This is different to normal plt.subplots behaviour where axs[rows][cols] starts at 0 and increases down
+            axs[i] = plt.subplot(rows, cols, idx[i])
+            attr_df = df[df['Endpoint'] == attribute]
+            axs[i].yaxis.set_major_locator(FixedLocator(yticks[i]))
+            axs[i].set_ylim(ylims[i])
+            axs[i].margins(x=0.02, tight=True)
+            axs[i].set_ylabel(attribute)
+
+            gam_formula = 'Value ~ dpf + treat'
+
+            # x_spline = df[['dpf', 'treat']]
+            # bs = sm.gam.BSplines(x_spline, df=[4, 4], degree=[3, 3])
+            x_spline = attr_df[['dpf', 'treat']]
+            bs = sm.gam.BSplines(x_spline, df=[4, 4], degree=[3, 3])
+            gamma_model = sm.formula.glmgam(data=attr_df, formula=gam_formula, smoother=bs,
+                                             family=sm.families.Gamma(sm.genmod.families.links.Log()))
+            r = gamma_model.fit()
+            pred = r.get_prediction()
+
+            table_stats.append([attribute, r])
+            # print('{}\n'.format(attribute))
+            # print(r.summary())
+            sns.lineplot(ax=axs[i], data=attr_df, x=x, y=r.fittedvalues, hue='Treatment', legend=False)
 
             for count, treatment in enumerate(treatments):
                 treatment_df = attr_df.loc[attr_df['treat'] == treatment]

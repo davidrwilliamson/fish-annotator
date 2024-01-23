@@ -5,12 +5,53 @@ import numpy as np
 
 
 def main():
-    stage = 'eggs'
+    stage = 'larvae'
     if stage == 'larvae':
-        root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/'
-        dates = ['20200412', '20200413', '20200414', '20200415', '20200416', '20200417']
-        treatments = ['DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
-        done = ['20200416/DCA-ctrl', '20200416/DCA-0,15', '20200416/DCA-0,31', '20200416/DCA-0,62']
+        root_folder = '/media/dave/DATA/2115/'
+        # root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/'
+        # dates = ['20210423', '20210425']
+        dates = ['20210425']
+        treatments = ['ulsfo-4d-3']
+        # treatments = ['statfjord-4d-1',
+        #               'statfjord-4d-1_2',
+        #               'statfjord-4d-3',
+        #               'statfjord-4d-3_2',
+        #               'statfjord-14d-4',
+        #               'statfjord-14d-4_2',
+        #               'statfjord-21d-2',
+        #               'statfjord-21d-2_2',
+        #               'statfjord-40d-4',
+        #               'statfjord-40d-4_2',
+        #               'statfjord-60d-2',
+        #               'statfjord-60d-2_2',
+        #               'sw-4d-3',
+        #               'sw-60d-2',
+        #               'sw-60d-2_2',
+        #               'sw-60d-3',
+        #               'sw-60d-4',
+        #               'sw-60d-4_2',
+        #               'ulsfo-28d-1',
+        #               'ulsfo-28d-1_2',
+        #               'ulsfo-28d-2',
+        #               'ulsfo-28d-2_2',
+        #               'ulsfo-28d-4',
+        #               'ulsfo-28d-4_2',
+        #               'ulsfo-60d-1',
+        #               'ulsfo-60d-1_2',
+        #               'ulsfo-60d-2',
+        #               'ulsfo-60d-2_2',
+        #               'statfjord-28d-3',
+        #               'statfjord-60d-3',
+        #               'sw3',
+        #               'sw4',
+        #               'sw-4d-1',
+        #               'sw-60d-1',
+        #               'ulsfo-4d-3',
+        #               'ulsfo-60d-3']
+        done = []
+        # dates = ['20200412', '20200413', '20200414', '20200415', '20200416', '20200417']
+        # treatments = ['DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50']
+        # done = ['20200416/DCA-ctrl', '20200416/DCA-0,15', '20200416/DCA-0,31', '20200416/DCA-0,62']
     elif stage == 'eggs':
         root_folder = '/media/dave/DATA/2020_reanalysis/eggs/1151/'
         dates = ['20200412']
@@ -18,8 +59,8 @@ def main():
         treatments = ['DCA-2,50']
         done = ['']
 
-    run(root_folder, stage, dates, treatments, done)
-    # run_recheck(root_folder, stage, dates, treatments, done)
+    # run(root_folder, stage, dates, treatments, done)
+    run_recheck(root_folder, stage, dates, treatments, done)
 
 
 def run_recheck(root_folder, stage, dates, treatments, done):
@@ -38,10 +79,12 @@ def run_recheck(root_folder, stage, dates, treatments, done):
     def update_text(img, info_string):
         font = cv.FONT_HERSHEY_PLAIN
         font_size = 2
-        font_colour = (127, 127, 127)
+        # font_colour = (127, 127, 127)
+        font_colour = (0, 0, 0)
         line_weight = 2
         pos_x = 2000
-        pos_y = 850
+        # pos_y = 850
+        pos_y = 750
         line_offset = 25
 
         this_frame = df[df['Image ID'] == ims[current_im_num]]
@@ -56,7 +99,7 @@ def run_recheck(root_folder, stage, dates, treatments, done):
                 eggs = this_frame[this_frame['Fish ID'] == fish_id]['Egg min diameter[mm]'].dropna()
             else:
                 raise RuntimeWarning('Invalid life stage selected')
-            eyes = this_frame[this_frame['Fish ID'] == fish_id]['Eye area[mm2]'].dropna()
+            eyes = this_frame[this_frame['Fish ID'] == fish_id]['Eye min diameter[mm]'].dropna()
             yolks = this_frame[this_frame['Fish ID'] == fish_id]['Yolk area[mm2]'].dropna()
 
             text_lines.append('Fish {}'.format(n + 1))
@@ -91,22 +134,36 @@ def run_recheck(root_folder, stage, dates, treatments, done):
 
         return img
 
-    def write_to_file(df):
-        df = df.drop(columns=['Egg max diameter[mm]', 'Egg area[mm2]',
-                              'Eye max diameter[mm]', 'Eye area[mm2]',
-                              'Yolk length[mm]', 'Yolk height[mm]'])
-        type_dict = {'Image ID': str,
-                     'Fish ID': int,
-                     'Embryo area[mm2]': float,
-                     'Embryo bad': bool,
-                     'Eye min diameter[mm]': float,
-                     'Eye bad': bool,
-                     'Yolk area[mm2]': float,
-                     'Yolk bad': bool,
-                     'Egg min diameter[mm]': float,
-                     'Egg bad': bool}
-        df = df.astype(type_dict)
-        df.to_csv(os.path.join(root_folder, date, treatment, 'rechecked_measurements.csv'), sep=',', index=False, )
+    def write_to_file(df, lifestage: str):
+        # df = df.drop(columns=['Egg max diameter[mm]', 'Egg area[mm2]',
+        #                       'Eye max diameter[mm]', 'Eye area[mm2]',
+        #                       'Yolk length[mm]', 'Yolk height[mm]'])
+        if lifestage == 'larvae':
+            type_dict = {'Image ID': str,
+                         'Fish ID': int,
+                         'Body area[mm2]': float,
+                         'Body bad': bool,
+                         'Eye min diameter[mm]': float,
+                         'Eye bad': bool,
+                         'Yolk area[mm2]': float,
+                         'Yolk bad': bool}
+            df = df.astype(type_dict)
+            df.to_csv(os.path.join(root_folder, date, treatment, 'rechecked_measurements.csv'), sep=',', index=False, )
+        elif lifestage == 'eggs':
+            type_dict = {'Image ID': str,
+                         'Fish ID': int,
+                         'Body area[mm2]': float,
+                         'Embryo bad': bool,
+                         'Eye min diameter[mm]': float,
+                         'Eye bad': bool,
+                         'Yolk area[mm2]': float,
+                         'Yolk bad': bool,
+                         'Egg min diameter[mm]': float,
+                         'Egg bad': bool}
+            df = df.astype(type_dict)
+            df.to_csv(os.path.join(root_folder, date, treatment, 'rechecked_measurements.csv'), sep=',', index=False, )
+
+
 
     for date in dates:
         for treatment in treatments:
@@ -235,9 +292,9 @@ def run_recheck(root_folder, stage, dates, treatments, done):
                                     if k == 27:  # escape
                                         quit()
                                     elif k == 13:  # enter
-                                        write_to_file(df)
+                                        write_to_file(df, stage)
                                         loop = False
-                                write_to_file(df)
+                                write_to_file(df, stage)
 
                     else:
                         raise RuntimeWarning('No notes file for {}'.format(root_folder))
@@ -278,10 +335,11 @@ def run(root_folder, stage, dates, treatments, done):
     def update_text(img, bad, info_string):
         font = cv.FONT_HERSHEY_PLAIN
         font_size = 2
-        font_colour = (127, 127, 127)
+        # font_colour = (127, 127, 127)
+        font_colour = (0, 0, 0)
         line_weight = 2
         pos_x = 2200
-        pos_y = 735
+        pos_y = 635
         line_offset = 25
         egg_offset = 0
 

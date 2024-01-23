@@ -427,10 +427,10 @@ def main():
     lifestage = 'Eggs'
 
     df['Eye mean diameter[mm]'] = (df['Eye max diameter[mm]'] + df['Eye min diameter[mm]']) * 0.5
-    pf.calculate_precision(df)
+    # pf.calculate_precision(df)
 
     # table_stats = pf.plot_control_attributes(df, attributes, dpf, lifestage)
-    table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
+    # table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
     # table_latex = pf.prepare_latex_table(table_stats, control=False)
     pf.lineplot_by_treatment(df, attributes, dpf, lifestage)
 

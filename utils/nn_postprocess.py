@@ -31,10 +31,17 @@ def load_image(image_folder: str, f: str) -> np.ndarray:
         im = Image.open(os.path.join(image_folder, f + '.png'))
         im = np.asarray(im)
         im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+    elif os.path.splitext(f)[-1] == '.JPG':
+        im = Image.open(os.path.join(image_folder, f + '.JPG'))
+        im = np.asarray(im)
+        im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
     else:
         # print ('No valid extension found, trying .silc_bayer')
-        im = np.load(os.path.join(image_folder, f + '.silc')).astype(np.uint8).squeeze()
-        im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
+        ## For BHH's microscopy images
+        im = Image.open(os.path.join(image_folder, f + '.JPG'))#.astype(np.uint8).squeeze()
+        im = np.array(im)
+        im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+        # im = cv.cvtColor(im, cv.COLOR_BAYER_BG2BGR)
 
     return im
 
@@ -696,7 +703,8 @@ def get_idx_by_class(class_ids: np.ndarray) -> [np.ndarray, np.ndarray, np.ndarr
 
 # %% Main
 def analyse_folder(folder: str, image_folder: str, image_out_folder: str, show_images: bool, write_csv: bool, write_images: bool) -> None:
-    scale = 287.0
+    # scale = 287.0
+    scale = 426.0 # Scale for BHH images
     date, treatment = folder.split('/')[-2:]
     log_path = os.path.join(folder, '{}_{}_measurements_log.csv'.format(date, treatment))
 
@@ -714,6 +722,7 @@ def analyse_folder(folder: str, image_folder: str, image_out_folder: str, show_i
 
     pbar = ProgressBar(widgets=[Percentage(), ' ', Bar(), '   ', Timer(), '   ', AdaptiveETA()])
     for f in pbar(files):
+        print('\n {}'.format(f))
         im = load_image(image_folder, f)
         h, w = im.shape[0:2]
 
@@ -964,52 +973,76 @@ def main():
     write_images = True
     write_csv = True
 
-    image_root_folder = '/media/dave/dave_8tb/2021/'
-    # nn_output_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/'
-    # image_out_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/images/'
-    nn_output_root_folder = '/media/dave/DATA/2115/'
-    image_out_root_folder = '/media/dave/DATA/2115/images/'
+    ### BHH microscopy images ###
+    image_root_folder = '/mnt/Media/bhh_data/Images/'
+    nn_output_root_folder = '/mnt/Media/bhh_data/results/2115/'
+    image_out_root_folder = '/mnt/Media/bhh_data/results/images/'
 
+    dates = ['20210422']
+    treatments = ['bar']
 
-    dates = ['20210419', '20210420', '20210421', '20210422', '20210423', '20210424', '20210425']
-    treatments = ['1', '2', '3', 'sw1_1', 'sw1_2', 'sw3_1', 'sw3_2', 'sw3_3', 'ulsfo-28d-1_1', 'ulsfo-28d-1_2', 'ulsfo-28d-1_3',
-                  'statfjord-4d-1', 'statfjord-4d-1_2', 'statfjord-4d-3', 'statfjord-4d-3_2', 'statfjord-14d-4',
-                  'statfjord-14d-4_2', 'statfjord-21d-2', 'statfjord-21d-2_2', 'statfjord-40d-4', 'statfjord-40d-4_2',
-                  'statfjord-60d-2', 'statfjord-60d-2_2', 'sw-4d-3', 'sw-60d-2', 'sw-60d-2_2', 'sw-60d-3', 'sw-60d-4',
-                  'sw-60d-4_2', 'ulsfo-28d-1', 'ulsfo-28d-1_2', 'ulsfo-28d-2', 'ulsfo-28d-2_2', 'ulsfo-28d-4',
-                  'ulsfo-28d-4_2', 'ulsfo-60d-1', 'ulsfo-60d-1_2', 'ulsfo-60d-2', 'ulsfo-60d-2_2', 'statfjord-28d-3',
-                  'statfjord-60d-3', 'sw3', 'sw4', 'sw-4d-1', 'sw-60d-1', 'ulsfo-4d-3', 'ulsfo-60d-3']
-    done = []
+    # try:
+    for date in dates:
+        for treatment in treatments:
+            nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
+            image_folder = os.path.join(image_root_folder, date, treatment)
+            image_out_folder = os.path.join(image_out_root_folder, date, treatment)
 
-    # 2020 reanalysis
-    image_root_folder = '/media/dave/dave_8tb/Easter_2020/Bernard'
-    nn_output_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/'
-    image_out_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/images'
+            if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
+                print('Analysing {}'.format(nn_output_folder))
+                analyse_folder(nn_output_folder, image_folder, image_out_folder, show_images, write_csv, write_images)
+                print('    ...done')
+    # except Exception as err:
+    #     foo = -1
+    #     print(err)
+    ### ###
 
-    # dates = ['20200412', '20200413', '20200414', '20200415', '20200416', '20200417']
-    # treatments = ['1', '2', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    # image_root_folder = '/media/dave/dave_8tb/2021/'
+    # # nn_output_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/'
+    # # image_out_root_folder = '/mnt/6TB_Media/PhD Work/2021_cod/larvae_results/images/'
+    # nn_output_root_folder = '/media/dave/DATA/2115/'
+    # image_out_root_folder = '/media/dave/DATA/2115/images/'
+    #
+    #
+    # dates = ['20210419', '20210420', '20210421', '20210422', '20210423', '20210424', '20210425']
+    # treatments = ['1', '2', '3', 'sw1_1', 'sw1_2', 'sw3_1', 'sw3_2', 'sw3_3', 'ulsfo-28d-1_1', 'ulsfo-28d-1_2', 'ulsfo-28d-1_3',
+    #               'statfjord-4d-1', 'statfjord-4d-1_2', 'statfjord-4d-3', 'statfjord-4d-3_2', 'statfjord-14d-4',
+    #               'statfjord-14d-4_2', 'statfjord-21d-2', 'statfjord-21d-2_2', 'statfjord-40d-4', 'statfjord-40d-4_2',
+    #               'statfjord-60d-2', 'statfjord-60d-2_2', 'sw-4d-3', 'sw-60d-2', 'sw-60d-2_2', 'sw-60d-3', 'sw-60d-4',
+    #               'sw-60d-4_2', 'ulsfo-28d-1', 'ulsfo-28d-1_2', 'ulsfo-28d-2', 'ulsfo-28d-2_2', 'ulsfo-28d-4',
+    #               'ulsfo-28d-4_2', 'ulsfo-60d-1', 'ulsfo-60d-1_2', 'ulsfo-60d-2', 'ulsfo-60d-2_2', 'statfjord-28d-3',
+    #               'statfjord-60d-3', 'sw3', 'sw4', 'sw-4d-1', 'sw-60d-1', 'ulsfo-4d-3', 'ulsfo-60d-3']
+    # done = []
+    #
+    # # 2020 reanalysis
+    # image_root_folder = '/media/dave/dave_8tb/Easter_2020/Bernard'
+    # nn_output_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/'
+    # image_out_root_folder = '/media/dave/DATA/2020_reanalysis/larvae/2115/images'
+    #
+    # # dates = ['20200412', '20200413', '20200414', '20200415', '20200416', '20200417']
+    # # treatments = ['1', '2', 'DCA-ctrl', 'DCA-0,15', 'DCA-0,31', 'DCA-0,62', 'DCA-1,25', 'DCA-2,50', 'DCA-5,00']
+    #
+    # dates = ['20200413', '20200416']
+    # treatments = ['1', 'DCA-ctrl']
+    #
+    # done = ['20200416/1', '20200413/DCA-ctrl']
 
-    dates = ['20200413', '20200416']
-    treatments = ['1', 'DCA-ctrl']
-
-    done = ['20200416/1', '20200413/DCA-ctrl']
-
-    try:
-        for date in dates:
-            for treatment in treatments:
-                nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
-                image_folder = os.path.join(image_root_folder, date, treatment)
-                image_out_folder = os.path.join(image_out_root_folder, date, treatment)
-
-                if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
-                    if os.path.join(date, treatment) in done:
-                        print('Skipping previously analysed folder {}'.format(nn_output_folder))
-                    else:
-                        print('Analysing {}'.format(nn_output_folder))
-                        analyse_folder(nn_output_folder, image_folder, image_out_folder, show_images, write_csv, write_images)
-                        # print('    ...done')
-    except Exception as err:
-        foo = -1
+    # try:
+    #     for date in dates:
+    #         for treatment in treatments:
+    #             nn_output_folder = os.path.join(nn_output_root_folder, date, treatment)
+    #             image_folder = os.path.join(image_root_folder, date, treatment)
+    #             image_out_folder = os.path.join(image_out_root_folder, date, treatment)
+    #
+    #             if os.path.isdir(nn_output_folder) and os.path.isdir(image_folder):
+    #                 if os.path.join(date, treatment) in done:
+    #                     print('Skipping previously analysed folder {}'.format(nn_output_folder))
+    #                 else:
+    #                     print('Analysing {}'.format(nn_output_folder))
+    #                     analyse_folder(nn_output_folder, image_folder, image_out_folder, show_images, write_csv, write_images)
+    #                     # print('    ...done')
+    # except Exception as err:
+    #     foo = -1
 
 
 main()

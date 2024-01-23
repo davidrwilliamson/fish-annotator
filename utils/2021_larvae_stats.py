@@ -9,6 +9,7 @@ import statsmodels.api as sm
 from statannotations.Annotator import Annotator
 
 from plotting_functions import PlottingFunctions as pf
+from ec_stats import calculate_ecx
 # import ptitprince as pt
 
 
@@ -347,10 +348,12 @@ def main():
     dpf = [12, 13, 14, 15, 16]
     lifestage = 'Larvae'
 
+    pf.compare_treatment_group_gams(df, attributes, dpf, lifestage)
+    # calculate_ecx(df, attributes, dpf, lifestage, 10)
     # table_stats = pf.plot_control_attributes(df, attributes, dpf, lifestage)
-    table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
+    # table_stats = pf.compare_treatment_group_models(df, attributes, dpf, lifestage)
     # table_latex = pf.prepare_latex_table(table_stats, control=False)
-    pf.lineplot_by_treatment(df, attributes, dpf, lifestage)
+    # pf.lineplot_by_treatment(df, attributes, dpf, lifestage)
 
     foo = -1
     # plot_date_attribute(df, '20200413', 'Eye area[mm2]')
@@ -371,8 +374,6 @@ def main():
     # swarmplot_by_treatment_all_dates(df, 'Yolk fraction')
     # swarmplot_by_treatment_all_dates(df, 'Yolk area[mm2]')
     # swarmplot_by_treatment_all_dates(df, 'Body area[mm2]')
-
-    foo = -1
 
 
 def process_2021():
